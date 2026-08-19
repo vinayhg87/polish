@@ -61,18 +61,31 @@ cloud model `gemma4:cloud` for maximum precision.
 That's the whole install: **one signed program (Ollama) + this folder.** The
 hotkey app itself is a plain PowerShell script — nothing compiled.
 
-## Optional: cloud model (better quality for text & summaries)
+## ☁️ Optional: Cloud Model Setup & Configuration
 
-By default everything runs **locally** — private, offline, free. For higher
-quality on the text tones and summaries, you can toggle a large **Ollama Cloud**
-model (`gemma4:cloud`):
+By default, standard text polishing and summaries run **100% locally and offline** using `qwen2.5:0.5b` (~400 MB). 
 
-1. **Sign in once per machine:** open a terminal and run `ollama signin` (free
-   Ollama account; heavy use may need a paid plan).
-2. **Right-click the Polish tray icon → "Use cloud model for text".** Checkmark =
-   cloud ON; uncheck to return to local.
+For high-precision tasks, Polish integrates with **Ollama Cloud** (`gemma4:cloud`):
 
-> ⚠️ **Privacy & Cloud Mode:** With cloud ON (or when using Fix SQL), requests use the cloud model. **Polish automatically redacts all sensitive data** (SSNs, emails, DOBs, passwords, DB URIs, API keys, etc.) before transmission.
+* 🛢️ **Fix SQL (`Ctrl+Alt+Q`) Uses Cloud by Default:** Due to the structural complexity, dialect nuances, and accuracy required for complex Oracle SQL queries, **Fix SQL defaults to the high-precision cloud model (`gemma4:cloud`)** out-of-the-box.
+* 📝 **Optional Cloud Toggle for Text Tones & Summaries:** You can toggle the cloud model ON or OFF at any time for text rephrasing:
+  1. **Sign in once per machine:** Open a terminal/command prompt and run `ollama signin` (links your free Ollama account).
+  2. **Right-click the Polish tray icon → click "Use cloud model for text"**:
+     * **Checked:** Text tones & summaries use Cloud (`gemma4:cloud`)
+     * **Unchecked:** Text tones & summaries run 100% Local (`qwen2.5:0.5b`)
+
+### Model Customization (`polish.config.json`)
+You can customize model selections at any time by editing `polish.config.json`:
+```json
+{
+    "Model": "qwen2.5:0.5b",       // Fast local offline model (text & summaries)
+    "CloudModel": "gemma4:cloud",  // Cloud model for text & summaries (when toggled ON)
+    "SqlModel": "gemma4:cloud",    // Cloud model for Fix SQL (Ctrl+Alt+Q)
+    "UseCloud": false              // Default startup mode for text
+}
+```
+
+> ⚠️ **Automated Security Guarantee:** Whenever a cloud model is invoked (either via Fix SQL or when Cloud Text is ON), **Polish automatically redacts all sensitive data** (SSNs, emails, DOBs, passwords, DB URIs, API keys, credit cards, IP addresses, corporate domains, and user IDs) into token placeholders *before* payload leaves your machine. Original values are safely rehydrated on your local screen.
 
 ## 🛡️ Security & Privacy Architecture
 
