@@ -12,13 +12,12 @@ work is local, though some high-precision tasks use the cloud.
 📥 **[Click Here to Download Polish-v1.7.zip](https://github.com/vinayhg87/polish/raw/main/Polish-v1.7.zip)** (Direct Zip Download)
 
 1. **Unzip `Polish-v1.7.zip`** to any folder on your machine.
-2. **Double-click `setup.bat`.** It installs Ollama (a signed installer) and
-   downloads the local model (`qwen2.5:0.5b` for text/summarize, ~400 MB). No admin rights needed.
-3. **Double-click `Start-Polish.bat`** to run it. A tray icon appears near the
-   clock and a "Ready" balloon pops up. (It flashes a console briefly, then runs
-   hidden in the background.)
-4. *(Optional)* **Double-click `Install-Autostart.bat`** so Polish starts
-   automatically (hidden) every time you log in.
+2. **Right-click `setup.bat` → "Run as administrator"** (or double-click). It installs Ollama and downloads the local model (`qwen2.5:0.5b`, ~400 MB).
+3. **Right-click `Start-Polish.bat` → "Run as administrator"** to launch Polish. A tray icon appears near your clock and a "Ready" notification pops up.
+4. *(Optional)* **Right-click `Install-Autostart.bat` → "Run as administrator"** so Polish starts automatically at login.
+
+> 💡 **Recommended Pro Tip (Run as Administrator):**
+> Always right-click `Start-Polish.bat` and select **"Run as administrator"**. Running as Admin allows Polish to paste in-place into elevated applications (such as SQL Developer, DBeaver, Admin terminals, and Enterprise tools) without Windows UIPI blocking keystrokes.
 
 ## Hotkeys
 
