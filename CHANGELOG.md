@@ -4,6 +4,15 @@ All notable changes, architectural updates, and version history for **Polish** (
 
 ---
 
+## [v1.6.1] - 2026-08-19
+
+### Fixed
+- **SQL Replacement Filter (`Get-ReplaceableText`)**:
+  - Clicking **Replace** on a Fix SQL (`Ctrl + Alt + Q`) result now extracts and pastes *only* the corrected SQL query into the target editor, omitting the explanation and bulleted error analysis.
+  - Full issue details remain visible inside the Preview window for review, while the clean query is copied/pasted into SQL Developer/DBeaver.
+
+---
+
 ## [v1.6.0] - 2026-08-19
 
 ### Added

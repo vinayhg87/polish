@@ -114,6 +114,20 @@ function Clean-Output {
     return $s
 }
 
+function Get-ReplaceableText {
+    param([string]$Text, [string]$Mode)
+    if (-not $Text) { return '' }
+    if ($Mode -eq 'sql') {
+        if ($Text -match '(?si)Corrected\s+SQL\s*:\s*(.*)$') {
+            $sql = $Matches[1].Trim()
+            $sql = $sql -replace '^\s*```[a-zA-Z]*\s*', ''
+            $sql = $sql -replace '\s*```\s*$', ''
+            if ($sql) { return $sql.Trim() }
+        }
+    }
+    return $Text
+}
+
 function Invoke-Polish {
     param([string]$Text, [string]$System, [string]$Mode = 'text', [switch]$Stream, $Target = $null, $CancelState = $null)
     $think = $false
@@ -534,6 +548,26 @@ function Show-Working {
         return $f
     } catch { return $null }
 }
+
+function Format-RichTextHeaders {
+    param($RichTextBox)
+    if (-not $RichTextBox -or $RichTextBox.IsDisposed -or -not $RichTextBox.Text) { return }
+    try {
+        $headers = @('Issues Identified:', 'Corrected SQL:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---')
+        $baseFont = $RichTextBox.Font
+        $boldFont = New-Object System.Drawing.Font($baseFont.FontFamily, $baseFont.Size, [System.Drawing.FontStyle]::Bold)
+        $text = $RichTextBox.Text
+        foreach ($hdr in $headers) {
+            $idx = 0
+            while (($idx = $text.IndexOf($hdr, $idx, [System.StringComparison]::OrdinalIgnoreCase)) -ge 0) {
+                $RichTextBox.Select($idx, $hdr.Length)
+                $RichTextBox.SelectionFont = $boldFont
+                $idx += $hdr.Length
+            }
+        }
+        $RichTextBox.Select(0, 0)
+    } catch { }
+}
 function Hide-Working { param($f) if ($f) { try { $f.Close(); $f.Dispose() } catch { } } }
 
 # --- Unified result popup: Summary (view-only) or Preview (Replace/Copy/Regenerate) ---
@@ -633,7 +667,7 @@ function Show-ResultPopup {
             if (-not $Force -and $state.Cache.ContainsKey($key)) {
                 $cached = [string]$state.Cache[$key]
                 $state.Result = $cached
-                if (-not $tb.IsDisposed) { $tb.Text = $cached; $tb.Select(0, 0) }
+                if (-not $tb.IsDisposed) { $tb.Text = $cached; Format-RichTextHeaders $tb; $tb.Select(0, 0) }
                 if (-not $form.IsDisposed) { $title.Text = $baseTitle }
                 return
             }
@@ -651,7 +685,7 @@ function Show-ResultPopup {
                 if ($state.Cancelled) { return }
                 $state.Result = $full
                 $state.Cache[$key] = $full     # remember this tone's result for instant re-view
-                if (-not $tb.IsDisposed) { $tb.Text = $full; $tb.Select(0, 0) }
+                if (-not $tb.IsDisposed) { $tb.Text = $full; Format-RichTextHeaders $tb; $tb.Select(0, 0) }
                 if (-not $state.Historied) { Add-History -Tone $key -Original $Original -Result $full; $state.Historied = $true }
             } catch {
                 if (-not $state.Cancelled -and -not $tb.IsDisposed) { $tb.Text = "Couldn't reach the model. Is Ollama running?`r`n`r`n$($_.Exception.Message)" }
@@ -674,7 +708,8 @@ function Show-ResultPopup {
                         $form.Hide()
                         if ($TargetHwnd -ne [IntPtr]::Zero) { $native.SetForeground($TargetHwnd) }
                         Start-Sleep -Milliseconds 120
-                        Invoke-SafeClipboard { [System.Windows.Forms.Clipboard]::SetText($state.Result) }
+                        $pasteText = Get-ReplaceableText -Text $state.Result -Mode $Mode
+                        Invoke-SafeClipboard { [System.Windows.Forms.Clipboard]::SetText($pasteText) }
                         Start-Sleep -Milliseconds 60
                         [System.Windows.Forms.SendKeys]::SendWait('^v')
                         Start-Sleep -Milliseconds 180
@@ -842,6 +877,7 @@ function Show-History {
                 if ($i -ge 0 -and $i -lt $items.Count) {
                     $h = $items[$i]
                     $detail.Text = "TONE: $($h.Tone)`r`nWHEN: $($h.Time)`r`n`r`n--- ORIGINAL ---`r`n$($h.Original)`r`n`r`n--- RESULT ---`r`n$($h.Result)"
+                    Format-RichTextHeaders $detail
                 }
             }.GetNewClosure())
         $btnCopy.add_Click({ param($s, $e)
@@ -999,7 +1035,7 @@ while ($true) {
             $mi = Get-ActiveModelInfo $mode
             $working = Show-Working 'Polishing...' "$($mi.Label) - $($mi.Name)"
             try { $res = Invoke-Polish -Text $sel -System $Tones[$toneKey] -Mode $mode } finally { Hide-Working $working }
-            if ($res) { Add-History -Tone $toneKey -Original $sel -Result $res; Set-AndPaste $res -TargetHwnd $targetHwnd }
+            if ($res) { Add-History -Tone $toneKey -Original $sel -Result $res; $pasteText = Get-ReplaceableText -Text $res -Mode $mode; Set-AndPaste $pasteText -TargetHwnd $targetHwnd }
             else { Show-Note 'The model returned nothing - try again.' 'Warning' }
         }
     } catch {
