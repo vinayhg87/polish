@@ -5,6 +5,21 @@ Rephrase / polish text **anywhere** (Slack, Teams, Outlook, browser) with a
 replaces it in place. No manual copy-pasting into ChatGPT/Claude — most
 work is local, though some high-precision tasks use the cloud.
 
+[![Download Polish v1.7 Zip](https://img.shields.io/badge/Download-Polish--v1.7.zip-00A699?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/vinayhg87/polish/raw/main/Polish-v1.7.zip)
+
+## Quick Download & Setup (one time)
+
+📥 **[Click Here to Download Polish-v1.7.zip](https://github.com/vinayhg87/polish/raw/main/Polish-v1.7.zip)** (Direct Zip Download)
+
+1. **Unzip `Polish-v1.7.zip`** to any folder on your machine.
+2. **Double-click `setup.bat`.** It installs Ollama (a signed installer) and
+   downloads the local model (`qwen2.5:0.5b` for text/summarize, ~400 MB). No admin rights needed.
+3. **Double-click `Start-Polish.bat`** to run it. A tray icon appears near the
+   clock and a "Ready" balloon pops up. (It flashes a console briefly, then runs
+   hidden in the background.)
+4. *(Optional)* **Double-click `Install-Autostart.bat`** so Polish starts
+   automatically (hidden) every time you log in.
+
 ## Hotkeys
 
 | Hotkey | What it does |
