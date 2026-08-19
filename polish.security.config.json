@@ -1,0 +1,31 @@
+{
+    "Enabled": true,
+    "RehydrateInOutput": true,
+    "LogAuditTrail": true,
+    "Categories": {
+        "SsnAndGovtId": true,
+        "ApiKeysAndTokens": true,
+        "PasswordsAndDbUris": true,
+        "CreditCards": true,
+        "IpAddresses": true,
+        "CorporateDomains": true,
+        "Emails": true,
+        "DateOfBirth": true,
+        "PhoneNumbers": false
+    },
+    "SunetIdConfig": {
+        "Enabled": true,
+        "MinLength": 3,
+        "MaxLength": 8,
+        "MustStartWithLetter": true,
+        "ForceLowerCaseOnly": true,
+        "CustomSunetIds": []
+    },
+    "CustomRules": [
+        {
+            "Name": "Employee ID",
+            "Pattern": "\\bEMP-\\d{5}\\b",
+            "Tag": "EMPID"
+        }
+    ]
+}
