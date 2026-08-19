@@ -222,14 +222,14 @@ function Protect-SensitiveData {
         }
     }
 
-    if ($Config.SunetIdConfig -and $Config.SunetIdConfig.Enabled) {
-        $sunetMatches = [regex]::Matches($script:currentMaskedText, '(?i)\b(?:sunetid|sunet_id|cn_sunetid|sunet)\s*[:=]\s*[''"]?([a-zA-Z0-9_-]+)[''"]?')
-        foreach ($m in $sunetMatches) {
-            if ($m.Groups.Count -gt 1) { & $addMask 'SUNET' $m.Groups[1].Value }
+    if ($Config.UserAccountIdConfig -and $Config.UserAccountIdConfig.Enabled) {
+        $userMatches = [regex]::Matches($script:currentMaskedText, '(?i)\b(?:userid|user_id|username|account_id)\s*[:=]\s*[''"]?([a-zA-Z0-9_-]+)[''"]?')
+        foreach ($m in $userMatches) {
+            if ($m.Groups.Count -gt 1) { & $addMask 'USERID' $m.Groups[1].Value }
         }
-        if ($Config.SunetIdConfig.CustomSunetIds) {
-            foreach ($sId in $Config.SunetIdConfig.CustomSunetIds) {
-                if ($sId) { & $addMask 'SUNET' [string]$sId }
+        if ($Config.UserAccountIdConfig.CustomUserIds) {
+            foreach ($uId in $Config.UserAccountIdConfig.CustomUserIds) {
+                if ($uId) { & $addMask 'USERID' [string]$uId }
             }
         }
     }

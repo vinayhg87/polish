@@ -9,8 +9,7 @@ All notable changes, architectural updates, and version history for **Polish** (
 ### Added
 - **Security Redaction & Data Masking Engine (`polish.security.config.json`)**:
   - Integrated outbound security masking for all cloud model calls (`gemma4:cloud` and any `*:cloud` model).
-  - Automatically redacts sensitive data (SSNs, Emails, Date of Birth, API Keys, Passwords, DB Connection URIs, Credit Cards, IP Addresses, Corporate Domains, SUNET IDs, and Custom Employee ID regex rules) into token placeholders (e.g. `[REDACTED_EMAIL_1]`) prior to HTTP transmission.
-  - **Contextual SUNET ID Matcher**: Added contextual assignment regex patterns to redact SUNET ID assignments in SQL queries and code.
+  - Automatically redacts sensitive data (SSNs, Emails, Date of Birth, API Keys, Passwords, DB Connection URIs, Credit Cards, IP Addresses, Corporate Domains, and Custom Employee ID regex rules) into token placeholders (e.g. `[REDACTED_EMAIL_1]`) prior to HTTP transmission.
   - **Inbound Rehydration (`Unprotect-SensitiveData`)**: Automatically restores original sensitive values into the returned text before rendering in the preview window or executing in-place replacements.
 - **Interactive Security Audit Log Viewer (`Show-SecurityAuditLog`)**:
   - Added GUI window accessible via system tray menu (**`Security Audit Log...`**).

@@ -80,7 +80,7 @@ Polish is built with a **privacy-first, low-attack-surface architecture**:
 
 * 🔒 **Local-First & Offline by Default:** Text polishing runs 100% locally on `http://127.0.0.1:11434`. No data leaves your machine during local execution.
 * 🛡️ **Automated Outbound Data Redaction (`polish.security.config.json`):** When cloud features are used (`gemma4:cloud`), Polish automatically scans and redacts confidential data into token placeholders (e.g. `[REDACTED_EMAIL_1]`, `[REDACTED_SSN_1]`, `[REDACTED_DBURI_1]`) **before** sending requests over the Internet.
-  * **Supported Redaction Categories:** SSNs, Email Addresses, Dates of Birth (DOB), Passwords & DB URIs, API Keys & Tokens, Credit Cards, IP Addresses, Internal Corporate Domains, SUNET IDs, and Custom Regex Rules (e.g. Employee IDs).
+  * **Supported Redaction Categories:** SSNs, Email Addresses, Dates of Birth (DOB), Passwords & DB URIs, API Keys & Tokens, Credit Cards, IP Addresses, Internal Corporate Domains, and Custom Regex Rules (e.g. Employee IDs).
 * 🔄 **Inbound Rehydration:** Original sensitive values are restored back to your output on your local machine so you don't lose data when pasting into your app (controllable via `"RehydrateInOutput"`).
 * 👁️ **Visual Security Audit Log:** Right-click the tray icon -> **`Security Audit Log...`** to inspect side-by-side visual proof of exact masked payloads sent to Ollama Cloud vs your local token map.
 * ⚡ **Zero Remote Code Execution (RCE) / Injection Vectors:** No `Invoke-Expression`, shell commands, or dynamic code evaluation. Text is handled strictly as string data.
@@ -141,7 +141,7 @@ and pastes the result back over your selection. Everything is local.
 
 ### v1.7
 - **Security Redaction & Data Masking Engine (`polish.security.config.json`)**:
-  - Automatically redacts sensitive data (SSNs, Emails, DOBs, Passwords, DB URIs, API Keys, Credit Cards, IP Addresses, Corporate Domains, SUNET IDs, and Custom Employee ID regex rules) into token placeholders before sending to cloud models.
+  - Automatically redacts sensitive data (SSNs, Emails, DOBs, Passwords, DB URIs, API Keys, Credit Cards, IP Addresses, Corporate Domains, and Custom Employee ID regex rules) into token placeholders before sending to cloud models.
   - **Inbound Rehydration**: Automatically restores original sensitive values on local return so you don't lose data.
 - **Interactive Security Audit Log Viewer (`Show-SecurityAuditLog`)**:
   - Right-click tray menu -> **`Security Audit Log...`** to view side-by-side proof of exact masked payloads sent to Ollama Cloud vs local token map.
