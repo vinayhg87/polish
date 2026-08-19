@@ -25,6 +25,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$LogFile = Join-Path $env:TEMP 'polish-debug.log'
+function Log { param([string]$m) try { "$([DateTime]::Now.ToString('HH:mm:ss'))  $m" | Out-File -FilePath $LogFile -Append -Encoding UTF8 } catch { } }
+
+
 # ---------------------------------------------------------------------------
 # Config  (defaults below; overridable via polish.config.json next to this script)
 # ---------------------------------------------------------------------------
@@ -61,6 +65,15 @@ $KeepAlive            = $cfg.KeepAlive
 $PreviewBeforeReplace = [bool]$cfg.PreviewBeforeReplace
 $HistoryEnabled       = [bool]$cfg.HistoryEnabled
 $HistoryMax           = [int]$cfg.HistoryMax
+
+# Security config (polish.security.config.json)
+$SecurityConfigPath = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'polish.security.config.json' } else { Join-Path (Get-Location) 'polish.security.config.json' }
+$script:SecurityConfig = $null
+try {
+    if (Test-Path $SecurityConfigPath) {
+        $script:SecurityConfig = Get-Content -LiteralPath $SecurityConfigPath -Raw | ConvertFrom-Json
+    }
+} catch { }
 
 # Use ALL CPU cores for maximum speed (accepted CPU spike during generation).
 $Threads = [Environment]::ProcessorCount
@@ -128,6 +141,142 @@ function Get-ReplaceableText {
     return $Text
 }
 
+# --- Security Audit store --------------------------------------------------
+$SecurityAuditPath = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'polish-security-audit.json' } else { Join-Path (Get-Location) 'polish-security-audit.json' }
+$script:SecurityAudit = @()
+try { if (Test-Path $SecurityAuditPath) { $script:SecurityAudit = @(Get-Content -LiteralPath $SecurityAuditPath -Raw | ConvertFrom-Json) } } catch { $script:SecurityAudit = @() }
+
+function Add-SecurityAudit {
+    param($Entry)
+    try {
+        $flat = @($Entry)
+        foreach ($item in $script:SecurityAudit) {
+            if ($item -and $item.Time -and $item.MaskedPayload) { $flat += $item }
+        }
+        if ($flat.Count -gt 50) { $flat = $flat[0..49] }
+        $script:SecurityAudit = $flat
+        ($script:SecurityAudit | ConvertTo-Json -Depth 4) | Out-File -LiteralPath $SecurityAuditPath -Encoding UTF8
+    } catch { }
+}
+
+function Protect-SensitiveData {
+    param([string]$Text, $Config)
+    $res = @{ Text = $Text; Map = [ordered]@{}; Masked = $false; Count = 0 }
+    if (-not $Config -or -not $Config.Enabled -or -not $Text) { return $res }
+    
+    $map = [ordered]@{}
+    $script:currentMaskedText = $Text
+    $counter = 0
+
+    $addMask = {
+        param($tagPrefix, $matchVal)
+        if (-not $matchVal) { return }
+        if ($matchVal -like '*REDACTED_*') { return }
+        $existingToken = $null
+        foreach ($k in $map.Keys) { if ($map[$k] -eq $matchVal) { $existingToken = $k; break } }
+        if (-not $existingToken) {
+            $counter++
+            $existingToken = "[REDACTED_${tagPrefix}_${counter}]"
+            $map[$existingToken] = $matchVal
+        }
+        $script:currentMaskedText = $script:currentMaskedText.Replace($matchVal, $existingToken)
+    }
+
+    $cats = $Config.Categories
+    if ($cats) {
+        if ($cats.PasswordsAndDbUris) {
+            $matches = [regex]::Matches($script:currentMaskedText, '\b(?:postgres|mysql|oracle|mongodb|redis):\/\/[^\s''"]+')
+            foreach ($m in $matches) { & $addMask 'DBURI' $m.Value }
+            $matches = [regex]::Matches($script:currentMaskedText, '(?i)\b(?:password|passwd|pwd)\s*[:=]\s*[''"]?([^\s''"]+)[''"]?')
+            foreach ($m in $matches) { if ($m.Groups.Count -gt 1) { & $addMask 'PWD' $m.Groups[1].Value } }
+        }
+        if ($cats.ApiKeysAndTokens) {
+            $matches = [regex]::Matches($script:currentMaskedText, '\b(?:sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{30,}|[a-zA-Z0-9_]{32,})\b')
+            foreach ($m in $matches) { & $addMask 'APIKEY' $m.Value }
+        }
+        if ($cats.CreditCards) {
+            $matches = [regex]::Matches($script:currentMaskedText, '\b(?:\d{4}[-\s]?){3}\d{4}\b')
+            foreach ($m in $matches) { & $addMask 'CARD' $m.Value }
+        }
+        if ($cats.SsnAndGovtId) {
+            $matches = [regex]::Matches($script:currentMaskedText, '\b\d{3}-\d{2}-\d{4}\b')
+            foreach ($m in $matches) { & $addMask 'SSN' $m.Value }
+        }
+        if ($cats.DateOfBirth) {
+            $matches = [regex]::Matches($script:currentMaskedText, '\b(?:\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}|\d{4}[\/\.-]\d{1,2}[\/\.-]\d{1,2})\b')
+            foreach ($m in $matches) { & $addMask 'DOB' $m.Value }
+        }
+        if ($cats.Emails) {
+            $matches = [regex]::Matches($script:currentMaskedText, '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
+            foreach ($m in $matches) { & $addMask 'EMAIL' $m.Value }
+        }
+        if ($cats.IpAddresses) {
+            $matches = [regex]::Matches($script:currentMaskedText, '\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b')
+            foreach ($m in $matches) {
+                if ($m.Value -ne '127.0.0.1' -and $m.Value -ne '0.0.0.0') { & $addMask 'IP' $m.Value }
+            }
+        }
+        if ($cats.CorporateDomains) {
+            $matches = [regex]::Matches($script:currentMaskedText, '\b[a-zA-Z0-9.-]+\.(?:corp|internal|lan|local)\b')
+            foreach ($m in $matches) { & $addMask 'DOMAIN' $m.Value }
+        }
+    }
+
+    if ($Config.SunetIdConfig -and $Config.SunetIdConfig.Enabled) {
+        $sunetMatches = [regex]::Matches($script:currentMaskedText, '(?i)\b(?:sunetid|sunet_id|cn_sunetid|sunet)\s*[:=]\s*[''"]?([a-zA-Z0-9_-]+)[''"]?')
+        foreach ($m in $sunetMatches) {
+            if ($m.Groups.Count -gt 1) { & $addMask 'SUNET' $m.Groups[1].Value }
+        }
+        if ($Config.SunetIdConfig.CustomSunetIds) {
+            foreach ($sId in $Config.SunetIdConfig.CustomSunetIds) {
+                if ($sId) { & $addMask 'SUNET' [string]$sId }
+            }
+        }
+    }
+
+    if ($Config.CustomRules) {
+        foreach ($cr in $Config.CustomRules) {
+            if ($cr.Pattern) {
+                $tag = if ($cr.Tag) { $cr.Tag } else { 'CUSTOM' }
+                try {
+                    $matches = [regex]::Matches($script:currentMaskedText, $cr.Pattern)
+                    foreach ($m in $matches) { & $addMask $tag $m.Value }
+                } catch { }
+            }
+        }
+    }
+
+    if ($map.Count -gt 0) {
+        $res.Text = $script:currentMaskedText
+        $res.Map = $map
+        $res.Masked = $true
+        $res.Count = $map.Count
+        if ($Config.LogAuditTrail) {
+            Log "security: redacted $($map.Count) sensitive item(s) before sending to cloud"
+            $auditEntry = [pscustomobject]@{
+                Time          = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+                Model         = if ($script:currentActiveModel) { $script:currentActiveModel } else { 'Cloud' }
+                Count         = $map.Count
+                MaskedPayload = $script:currentMaskedText
+                Map           = $map
+            }
+            Add-SecurityAudit -Entry $auditEntry
+        }
+    }
+    return $res
+}
+
+function Unprotect-SensitiveData {
+    param([string]$Text, $Map)
+    if (-not $Text -or -not $Map -or $Map.Count -eq 0) { return $Text }
+    $unmasked = $Text
+    foreach ($k in $Map.Keys) {
+        $val = [string]$Map[$k]
+        $unmasked = $unmasked.Replace($k, $val)
+    }
+    return $unmasked
+}
+
 function Invoke-Polish {
     param([string]$Text, [string]$System, [string]$Mode = 'text', [switch]$Stream, $Target = $null, $CancelState = $null)
     $think = $false
@@ -148,6 +297,20 @@ function Invoke-Polish {
             $activeModel = if ($script:UseCloud) { $CloudModel } else { $Model }
         }
     }
+    # Security Data Protection: mask sensitive values before sending to any cloud model
+    $isCloudRequest = ($activeModel -like '*:cloud')
+    $script:currentActiveModel = $activeModel
+    $secRes = $null
+    if ($isCloudRequest -and $script:SecurityConfig -and $script:SecurityConfig.Enabled) {
+        $secRes = Protect-SensitiveData -Text $Text -Config $script:SecurityConfig
+        if ($secRes.Masked) {
+            $Text = $secRes.Text
+            if (Get-Command Show-Note -ErrorAction SilentlyContinue) {
+                Show-Note "Security Protection: Redacted $($secRes.Count) sensitive item(s) before cloud transmission." 'Info'
+            }
+        }
+    }
+
     $payload = @{
         model      = $activeModel
         system     = $System + $guard
@@ -161,7 +324,11 @@ function Invoke-Polish {
 
     if (-not $Stream) {
         $resp = Invoke-RestMethod -Uri $Endpoint -Method Post -Body $bytes -ContentType 'application/json' -TimeoutSec 180
-        return (Clean-Output ([string]$resp.response))
+        $out = Clean-Output ([string]$resp.response)
+        if ($secRes -and $secRes.Masked -and $script:SecurityConfig.RehydrateInOutput) {
+            $out = Unprotect-SensitiveData -Text $out -Map $secRes.Map
+        }
+        return $out
     }
 
     # Streaming: Ollama returns newline-delimited JSON; append each token to
@@ -198,7 +365,11 @@ function Invoke-Polish {
         try { $reader.Close() } catch { }
         try { $resp.Close() } catch { }
     }
-    return (Clean-Output $sb.ToString())
+    $out = Clean-Output $sb.ToString()
+    if ($secRes -and $secRes.Masked -and $script:SecurityConfig.RehydrateInOutput) {
+        $out = Unprotect-SensitiveData -Text $out -Map $secRes.Map
+    }
+    return $out
 }
 
 # ---------------------------------------------------------------------------
@@ -388,6 +559,8 @@ try {
     $previewItem.add_Click({ $script:PreviewBeforeReplace = $this.Checked })
     $histItem = $menu.Items.Add('History...')
     $histItem.add_Click({ Show-History })
+    $auditItem = $menu.Items.Add('Security Audit Log...')
+    $auditItem.add_Click({ Show-SecurityAuditLog })
     $autoItem = $menu.Items.Add('Start Polish at login')
     $autoItem.CheckOnClick = $true
     $autoItem.Checked = (Test-Autostart)
@@ -423,6 +596,20 @@ function Add-History {
         $script:History = @($entry) + @($script:History)
         if ($script:History.Count -gt $HistoryMax) { $script:History = $script:History[0..($HistoryMax - 1)] }
         ($script:History | ConvertTo-Json -Depth 4) | Out-File -LiteralPath $HistoryPath -Encoding UTF8
+    } catch { }
+}
+
+# --- Security Audit store --------------------------------------------------
+$SecurityAuditPath = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'polish-security-audit.json' } else { Join-Path $env:TEMP 'polish-security-audit.json' }
+$script:SecurityAudit = @()
+try { if (Test-Path $SecurityAuditPath) { $script:SecurityAudit = @(Get-Content -LiteralPath $SecurityAuditPath -Raw | ConvertFrom-Json) } } catch { $script:SecurityAudit = @() }
+
+function Add-SecurityAudit {
+    param($Entry)
+    try {
+        $script:SecurityAudit = @($Entry) + @($script:SecurityAudit)
+        if ($script:SecurityAudit.Count -gt 50) { $script:SecurityAudit = $script:SecurityAudit[0..49] }
+        ($script:SecurityAudit | ConvertTo-Json -Depth 5) | Out-File -LiteralPath $SecurityAuditPath -Encoding UTF8
     } catch { }
 }
 
@@ -553,7 +740,7 @@ function Format-RichTextHeaders {
     param($RichTextBox)
     if (-not $RichTextBox -or $RichTextBox.IsDisposed -or -not $RichTextBox.Text) { return }
     try {
-        $headers = @('Issues Identified:', 'Corrected SQL:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---')
+        $headers = @('Issues Identified:', 'Corrected SQL:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
         $baseFont = $RichTextBox.Font
         $boldFont = New-Object System.Drawing.Font($baseFont.FontFamily, $baseFont.Size, [System.Drawing.FontStyle]::Bold)
         $text = $RichTextBox.Text
@@ -898,6 +1085,102 @@ function Show-History {
     } catch {
         Log "Show-History error: $($_.Exception.Message)"
         Show-Note 'Could not open history.' 'Warning'
+    }
+}
+
+# --- Security Audit viewer ------------------------------------------------
+function Show-SecurityAuditLog {
+    try {
+        $items = @($script:SecurityAudit)
+        if (-not $items -or $items.Count -eq 0) { Show-Note 'No security audit entries recorded yet.' 'Info'; return }
+
+        $form = New-Object System.Windows.Forms.Form
+        $form.Text = 'Polish - Security Audit Log (Cloud Data Protection Proof)'
+        $form.StartPosition = 'CenterScreen'
+        $form.AutoScaleMode = 'None'
+        $form.BackColor = [System.Drawing.Color]::White
+        $form.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+        $form.TopMost = $true
+        try { $form.Icon = New-PolishIcon } catch { }
+        $sc = Get-UiScale $form
+        $form.ClientSize = Scale-Size $sc 840 520
+        $form.MinimumSize = Scale-Size $sc 600 360
+        Center-Form $form
+
+        # Header
+        $header = New-Object System.Windows.Forms.Panel
+        $header.Dock = 'Top'; $header.Height = [int](50 * $sc); $header.BackColor = $script:Teal
+        $title = New-Object System.Windows.Forms.Label
+        $title.Text = 'Security Audit Log (Cloud Data Protection Proof)'
+        $title.AutoSize = $true
+        $title.Location = Scale-Point $sc 16 11
+        $title.Font = New-Object System.Drawing.Font('Segoe UI', 13, [System.Drawing.FontStyle]::Bold)
+        $title.ForeColor = [System.Drawing.Color]::White
+        $title.BackColor = $script:Teal
+        $header.Controls.Add($title)
+
+        # Body: Left list + Right detail
+        $bodyPanel = New-Object System.Windows.Forms.Panel
+        $bodyPanel.Dock = 'Fill'
+        $bodyPanel.Padding = New-Object System.Windows.Forms.Padding(14, 12, 14, 4)
+        $bodyPanel.BackColor = [System.Drawing.Color]::White
+
+        $detail = New-Object System.Windows.Forms.RichTextBox
+        $detail.Dock = 'Fill'
+        $detail.BorderStyle = 'None'
+        $detail.ReadOnly = $true
+        $detail.WordWrap = $true
+        $detail.BackColor = [System.Drawing.Color]::White
+        $detail.ForeColor = $script:Ink
+        $detail.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+
+        $list = New-Object System.Windows.Forms.ListBox
+        $list.Dock = 'Left'
+        $list.Width = [int](280 * $sc)
+        $list.BorderStyle = 'FixedSingle'
+        $list.Font = New-Object System.Drawing.Font('Segoe UI', 9)
+        foreach ($entry in $items) {
+            [void]$list.Items.Add("$($entry.Time)  [$($entry.Count) item(s)]  $($entry.Model)")
+        }
+
+        $bodyPanel.Controls.Add($detail)
+        $bodyPanel.Controls.Add($list)
+
+        # Footer
+        $btnClose = New-FlatButton -Text 'Close'
+        $btnOpenLog = New-FlatButton -Text 'Open Log File' -Accent
+        $footer = New-ButtonBar -Right2Left @($btnClose, $btnOpenLog)
+
+        $list.add_SelectedIndexChanged({ param($s, $e)
+                $i = $list.SelectedIndex
+                if ($i -ge 0 -and $i -lt $items.Count) {
+                    $entry = $items[$i]
+                    $mapText = ""
+                    if ($entry.Map) {
+                        $props = $entry.Map.PSObject.Properties
+                        if ($props) { foreach ($prop in $props) { $mapText += "  $($prop.Name)   ->   $($prop.Value)`r`n" } }
+                    }
+                    $detail.Text = "TIMESTAMP: $($entry.Time)`r`nCLOUD MODEL: $($entry.Model)`r`nITEMS REDACTED: $($entry.Count) item(s)`r`n`r`n--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---`r`n$($entry.MaskedPayload)`r`n`r`n--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---`r`n$mapText"
+                    Format-RichTextHeaders $detail
+                }
+            }.GetNewClosure())
+
+        $btnOpenLog.add_Click({ param($s, $e)
+                try { if (Test-Path $SecurityAuditPath) { [System.Diagnostics.Process]::Start('notepad.exe', $SecurityAuditPath) } } catch { }
+            }.GetNewClosure())
+        $btnClose.add_Click({ param($s, $e) $form.Close() }.GetNewClosure())
+
+        $form.Controls.Add($bodyPanel)
+        $form.Controls.Add($footer)
+        $form.Controls.Add($header)
+        $form.add_FormClosed({ param($s, $e) $form.Dispose() }.GetNewClosure())
+
+        if ($list.Items.Count -gt 0) { $list.SelectedIndex = 0 }
+        $form.Show()
+        $form.Activate()
+    } catch {
+        Log "Show-SecurityAuditLog error: $($_.Exception.Message)"
+        Show-Note 'Could not open security audit log.' 'Warning'
     }
 }
 

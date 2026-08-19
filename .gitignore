@@ -1,2 +1,5 @@
 polish-history.json
+polish-security-audit.json
 *.log
+scratch/
+*.bak

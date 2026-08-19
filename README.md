@@ -58,9 +58,18 @@ model (`gemma4:cloud`):
 2. **Right-click the Polish tray icon → "Use cloud model for text".** Checkmark =
    cloud ON; uncheck to return to local.
 
-> ⚠️ **Privacy:** with cloud ON, your selected text/summaries are sent to Ollama's
-> servers. Don't use it for confidential client content unless your data policy
-> allows. **SQL fixing now uses the cloud model** for better accuracy.
+> ⚠️ **Privacy & Cloud Mode:** With cloud ON (or when using Fix SQL), requests use the cloud model. **Polish automatically redacts all sensitive data** (SSNs, emails, DOBs, passwords, DB URIs, API keys, etc.) before transmission.
+
+## 🛡️ Security & Privacy Architecture
+
+Polish is built with a **privacy-first, low-attack-surface architecture**:
+
+* 🔒 **Local-First & Offline by Default:** Text polishing runs 100% locally on `http://127.0.0.1:11434`. No data leaves your machine during local execution.
+* 🛡️ **Automated Outbound Data Redaction (`polish.security.config.json`):** When cloud features are used (`gemma4:cloud`), Polish automatically scans and redacts confidential data into token placeholders (e.g. `[REDACTED_EMAIL_1]`, `[REDACTED_SSN_1]`, `[REDACTED_DBURI_1]`) **before** sending requests over the Internet.
+  * **Supported Redaction Categories:** SSNs, Email Addresses, Dates of Birth (DOB), Passwords & DB URIs, API Keys & Tokens, Credit Cards, IP Addresses, Internal Corporate Domains, SUNET IDs, and Custom Regex Rules (e.g. Employee IDs).
+* 🔄 **Inbound Rehydration:** Original sensitive values are restored back to your output on your local machine so you don't lose data when pasting into your app (controllable via `"RehydrateInOutput"`).
+* 👁️ **Visual Security Audit Log:** Right-click the tray icon -> **`Security Audit Log...`** to inspect side-by-side visual proof of exact masked payloads sent to Ollama Cloud vs your local token map.
+* ⚡ **Zero Remote Code Execution (RCE) / Injection Vectors:** No `Invoke-Expression`, shell commands, or dynamic code evaluation. Text is handled strictly as string data.
 
 ## Requirements
 

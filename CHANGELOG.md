@@ -4,6 +4,27 @@ All notable changes, architectural updates, and version history for **Polish** (
 
 ---
 
+## [v1.7.0] - 2026-08-19
+
+### Added
+- **Security Redaction & Data Masking Engine (`polish.security.config.json`)**:
+  - Integrated outbound security masking for all cloud model calls (`gemma4:cloud` and any `*:cloud` model).
+  - Automatically redacts sensitive data (SSNs, Emails, Date of Birth, API Keys, Passwords, DB Connection URIs, Credit Cards, IP Addresses, Corporate Domains, SUNET IDs, and Custom Employee ID regex rules) into token placeholders (e.g. `[REDACTED_EMAIL_1]`) prior to HTTP transmission.
+  - **Contextual SUNET ID Matcher**: Added contextual assignment regex pattern (`(?i)\b(?:sunetid|sunet_id|cn_sunetid|sunet)\s*[:=]\s*['"]?([a-zA-Z0-9_-]+)['"]?`) to redact SUNET ID assignments in SQL queries and code.
+  - **Inbound Rehydration (`Unprotect-SensitiveData`)**: Automatically restores original sensitive values into the returned text before rendering in the preview window or executing in-place replacements.
+- **Interactive Security Audit Log Viewer (`Show-SecurityAuditLog`)**:
+  - Added GUI window accessible via system tray menu (**`Security Audit Log...`**).
+  - Displays side-by-side proof of the exact masked payload string transmitted to Ollama Cloud vs the local token map.
+  - Added **`Open Log File`** button to view [`polish-security-audit.json`](file:///c:/Users/nichiuser/Documents/My_AI_Projects/Polish/polish-security-audit.json) in Notepad.
+
+### Fixed
+- **Notification Encoding Fix**:
+  - Replaced multi-byte emoji in notification string with plain text (`Security Protection:`) to fix character corruption (`ðY›¡ï`) in native Windows balloon tips.
+- **Database URI Regex Refinement**:
+  - Refined DB connection URI regex to preserve string quotes around DB connection strings in SQL queries.
+
+---
+
 ## [v1.6.1] - 2026-08-19
 
 ### Fixed
