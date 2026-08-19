@@ -1,4 +1,4 @@
-# Polish  —  v1.6 (Full)
+# Polish  —  v1.7 (Full)
 
 Rephrase / polish text **anywhere** (Slack, Teams, Outlook, browser) with a
 **local** AI model. Select text, press a hotkey, and the polished version
@@ -124,6 +124,19 @@ local Ollama server (`http://127.0.0.1:11434`) with a tone-specific instruction,
 and pastes the result back over your selection. Everything is local.
 
 ## Changelog
+
+### v1.7
+- **Security Redaction & Data Masking Engine (`polish.security.config.json`)**:
+  - Automatically redacts sensitive data (SSNs, Emails, DOBs, Passwords, DB URIs, API Keys, Credit Cards, IP Addresses, Corporate Domains, SUNET IDs, and Custom Employee ID regex rules) into token placeholders before sending to cloud models.
+  - **Contextual SUNET ID Matcher**: Redacts SUNET ID assignments in SQL queries and code (`cn_sunetid = demotest`).
+  - **Inbound Rehydration**: Automatically restores original sensitive values on local return so you don't lose data.
+- **Interactive Security Audit Log Viewer (`Show-SecurityAuditLog`)**:
+  - Right-click tray menu -> **`Security Audit Log...`** to view side-by-side proof of exact masked payloads sent to Ollama Cloud vs local token map.
+  - One-click **`Open Log File`** button to view `polish-security-audit.json` in Notepad.
+- **Notification Encoding Fix**: Plain text toast formatting fix (`Security Protection:`) preventing Windows balloon tip character corruption (`ðY›¡ï`).
+
+### v1.6.1
+- **Fix SQL Replacement Filter**: Clicking **Replace** on a Fix SQL (`Ctrl+Alt+Q`) result now extracts and pastes *only* the corrected SQL query into the target editor, omitting error explanations.
 
 ### v1.6
 - **Tone switcher in the Preview popup**: tabs for Professional / Concise / Friendly /
