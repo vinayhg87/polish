@@ -128,7 +128,6 @@ and pastes the result back over your selection. Everything is local.
 ### v1.7
 - **Security Redaction & Data Masking Engine (`polish.security.config.json`)**:
   - Automatically redacts sensitive data (SSNs, Emails, DOBs, Passwords, DB URIs, API Keys, Credit Cards, IP Addresses, Corporate Domains, SUNET IDs, and Custom Employee ID regex rules) into token placeholders before sending to cloud models.
-  - **Contextual SUNET ID Matcher**: Redacts SUNET ID assignments in SQL queries and code (`cn_sunetid = demotest`).
   - **Inbound Rehydration**: Automatically restores original sensitive values on local return so you don't lose data.
 - **Interactive Security Audit Log Viewer (`Show-SecurityAuditLog`)**:
   - Right-click tray menu -> **`Security Audit Log...`** to view side-by-side proof of exact masked payloads sent to Ollama Cloud vs local token map.

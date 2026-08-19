@@ -23,7 +23,7 @@ When utilizing cloud features (`gemma4:cloud`), Polish automatically runs an out
 - **Credit Card Numbers** (`4111-2222-3333-4444`)
 - **IP Addresses** (`192.168.1.45`)
 - **Corporate Internal Domains** (`*.corp`, `*.internal`, `*.lan`)
-- **SUNET IDs & Usernames** (`cn_sunetid = demotest`)
+- **SUNET IDs & Usernames** (`Usernames & Network IDs`)
 - **Custom Regex Rules** (e.g. Employee ID `EMP-12345`)
 
 ### 3. Local Rehydration
