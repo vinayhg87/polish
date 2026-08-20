@@ -894,7 +894,7 @@ function Show-ResultPopup {
         # grows with the (point-based) font and never clips on >100% displays.
         $sc = Get-UiScale $form
         $popW = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 700 } else { 560 }
-        $popH = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 520 } else { 430 }
+        $popH = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 540 } else { 430 }
         $minH = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 420 } else { 320 }
         $form.ClientSize = Scale-Size $sc $popW $popH
         $form.MinimumSize = Scale-Size $sc 480 $minH
@@ -968,25 +968,26 @@ function Show-ResultPopup {
 
             $chatPanel = New-Object System.Windows.Forms.Panel
             $chatPanel.Dock = 'Bottom'
-            $chatPanel.Height = [int](44 * $sc)
-            $chatPanel.Padding = New-Object System.Windows.Forms.Padding([int](14 * $sc), [int](6 * $sc), [int](14 * $sc), [int](6 * $sc))
-            $chatPanel.BackColor = [System.Drawing.Color]::FromArgb(245, 247, 248)
+            $chatPanel.Height = [int](56 * $sc)
+            $chatPanel.Padding = New-Object System.Windows.Forms.Padding([int](14 * $sc), [int](10 * $sc), [int](14 * $sc), [int](10 * $sc))
+            $chatPanel.BackColor = [System.Drawing.Color]::FromArgb(242, 244, 246)
 
             $btnAsk = New-Object System.Windows.Forms.Button
             $btnAsk.Text = 'Ask'
             $btnAsk.Dock = 'Right'
-            $btnAsk.Width = [int](72 * $sc)
+            $btnAsk.Width = [int](80 * $sc)
             $btnAsk.AutoSize = $false
             $btnAsk.FlatStyle = 'Flat'
             $btnAsk.FlatAppearance.BorderSize = 0
             $btnAsk.BackColor = $cTealLocal
             $btnAsk.ForeColor = [System.Drawing.Color]::White
-            $btnAsk.Font = New-Object System.Drawing.Font('Segoe UI', 9.5, [System.Drawing.FontStyle]::Bold)
+            $btnAsk.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
             $btnAsk.Cursor = [System.Windows.Forms.Cursors]::Hand
 
             $txtQuestion = New-Object System.Windows.Forms.TextBox
             $txtQuestion.Dock = 'Fill'
-            $txtQuestion.Font = New-Object System.Drawing.Font('Segoe UI', 9.5)
+            $txtQuestion.Font = New-Object System.Drawing.Font('Segoe UI', 11)
+            $txtQuestion.BorderStyle = 'FixedSingle'
             $txtQuestion.Text = 'Ask a follow-up question about this code...'
             $txtQuestion.ForeColor = $cGrayLocal
 
