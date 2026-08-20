@@ -85,8 +85,16 @@ $Tones = @{
     'professional'  = 'You are an expert business writing assistant. Rephrase the user''s message into polished, formal, professional English suitable for client communication, using refined business vocabulary and courteous, articulate phrasing. Elevate the wording while keeping it natural - not stiff or overwrought. Only rephrase what is written - keep the same meaning, facts, and intent. Do NOT invent, add, or assume any information, details, names, numbers, links, attachments, or placeholders that are not in the original. Do not answer questions in the message. Do not add greetings, sign-offs, notes, explanations, or quotation marks. Return only the rephrased message.'
     'concise'       = 'You are a professional writing assistant. Rewrite the user''s message to be as clear and concise as possible while staying professional and polite. Remove filler and redundancy but keep every fact, name, number, and link. Do not add greetings, sign-offs, notes, or quotation marks. Return only the rewritten message.'
     'friendly'      = 'You are a professional writing assistant. Rewrite the user''s message in a warm, friendly, and approachable yet professional tone suitable for client communication. Preserve the exact meaning and every fact, name, number, and link. Do not add greetings, sign-offs, notes, or quotation marks. Return only the rewritten message.'
-    'grammar'       = 'You are a careful proofreader. Correct only spelling, grammar, punctuation, and capitalization in the user''s message. Do not change wording, tone, style, or meaning beyond what is required for correctness. Do not add notes or quotation marks. Return only the corrected message.'
-    'sql'           = 'You are an expert Oracle SQL developer. The text is an existing Oracle SQL query that has a syntax error, logic error, or performance issue. First, explain all issues found in clear bullet points (pointers). Then, provide the corrected Oracle SQL query. Preserve the original intent, table names, column names, aliases, joins, and literal values - do NOT rewrite the query into something completely different or change what the query accomplishes.'
+    'sql'           = 'You are an expert Oracle SQL developer and database architect. Analyze the user''s SQL query and format your response EXACTLY into these sections:
+
+SQL Analysis:
+Dialect: [Detected SQL dialect, e.g. Oracle SQL, PostgreSQL, MySQL, T-SQL, etc.]
+Functional Summary: [Detailed summary of what this query does functionally and its business goal]
+Technical Summary: [Detailed explanation of query execution — tables, joins, filters, indexes, and aggregation]
+Improvements: [First, rate the query quality on a scale of 1 to 10. Only provide improvement suggestions if the score is below 5 due to syntax errors, incorrect joins, or severe performance bottlenecks. If the score is 5 or above, state that the query meets standards without needing changes.]
+Corrected SQL: [Provide the corrected SQL query ONLY if the score is below 5 or syntax/logic errors were found. If the query score is 5 or above, output "None needed (Query is valid)".]
+
+Do NOT wrap in markdown code block fences (no ``` or ```sql). Do NOT add conversational preambles.'
     'summarize'     = 'You are an expert summarizer. Your goal is to condense the provided text into a few concise, accurate bullet points. Focus on main decisions, key changes (including dates and numbers), action items, and deadlines. Ensure all facts remain accurate and that no external information is added.'
     'code_analyzer' = 'You are a senior software architect reviewing code. Analyze the user''s code and format your response EXACTLY into these four sections:
 
@@ -160,7 +168,7 @@ function Get-ReplaceableText {
             $sql = $Matches[1].Trim()
             $sql = $sql -replace '^\s*```[a-zA-Z]*\s*', ''
             $sql = $sql -replace '\s*```\s*$', ''
-            if ($sql) { return $sql.Trim() }
+            if ($sql -and $sql -notmatch '(?i)None needed') { return $sql.Trim() }
         }
     }
     return $Text
@@ -307,8 +315,8 @@ function Invoke-Polish {
     $think = $false
     switch ($Mode) {
         'sql' {
-            $guard = ' The query to analyze and fix is inside <message></message> tags. You must structure your output into two clear sections:`n`nIssues Identified:`n- [Explanation of issue 1 in bullet points]`n- [Explanation of issue 2 in bullet points]`n`nCorrected SQL:`n[The corrected valid Oracle SQL query]`n`nDo NOT wrap the response or SQL in markdown code block fences (no ``` or ```sql). Do not add any conversational preamble. Provide clear pointers and the exact corrected query.'
-            $temp = 0.1; $predict = 1024; $ctx = 4096
+            $guard = ' The query to analyze is inside <message></message> tags. You MUST structure your output EXACTLY as follows:`n`nSQL Analysis:`nDialect: [Detected SQL dialect]`nFunctional Summary:`n[Detailed summary of what this query does functionally in detail]`n`nTechnical Summary:`n[Detailed explanation of query execution, tables, joins, filters, and indexes]`n`nImprovements:`n[Rate the query on a scale of 1 to 10. Only provide improvement suggestions if the score is below 5 due to syntax errors, incorrect joins, or severe performance bottlenecks. If score is 5 or above, state that the query meets standards without needing improvements.]`n`nCorrected SQL:`n[Include corrected Oracle SQL query ONLY if score is below 5 or has errors; otherwise output "None needed (Query is valid)".]`n`nDo NOT use markdown headings (no # or ### headings). Do NOT add conversational preambles.'
+            $temp = 0.1; $predict = 1500; $ctx = 4096
             $activeModel = $SqlModel
         }
         'code_analyzer' {
@@ -773,7 +781,7 @@ function Format-RichTextHeaders {
     param($RichTextBox)
     if (-not $RichTextBox -or $RichTextBox.IsDisposed -or -not $RichTextBox.Text) { return }
     try {
-        $headers = @('Code Explanation:', 'Language:', 'Functional Summary:', 'Technical Summary:', 'Improvements:', 'Issues Identified:', 'Corrected SQL:', 'Issues & Improvements:', 'Corrected Code:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
+        $headers = @('SQL Analysis:', 'Dialect:', 'Code Explanation:', 'Language:', 'Functional Summary:', 'Technical Summary:', 'Improvements:', 'Issues Identified:', 'Corrected SQL:', 'Issues & Improvements:', 'Corrected Code:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
         $baseFont = $RichTextBox.Font
         $boldFont = New-Object System.Drawing.Font($baseFont.FontFamily, $baseFont.Size, [System.Drawing.FontStyle]::Bold)
         $text = $RichTextBox.Text
