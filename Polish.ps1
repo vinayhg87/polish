@@ -88,7 +88,7 @@ $Tones = @{
     'grammar'       = 'You are a careful proofreader. Correct only spelling, grammar, punctuation, and capitalization in the user''s message. Do not change wording, tone, style, or meaning beyond what is required for correctness. Do not add notes or quotation marks. Return only the corrected message.'
     'sql'           = 'You are an expert Oracle SQL developer. The text is an existing Oracle SQL query that has a syntax error, logic error, or performance issue. First, explain all issues found in clear bullet points (pointers). Then, provide the corrected Oracle SQL query. Preserve the original intent, table names, column names, aliases, joins, and literal values - do NOT rewrite the query into something completely different or change what the query accomplishes.'
     'summarize'     = 'You are an expert summarizer. Your goal is to condense the provided text into a few concise, accurate bullet points. Focus on main decisions, key changes (including dates and numbers), action items, and deadlines. Ensure all facts remain accurate and that no external information is added.'
-    'code_analyzer' = 'You are an expert programming educator who excels at breaking down code into simple, intuitive concepts. The user will provide a code snippet. Explain what the code does step-by-step in plain, crystal-clear language as if explaining to a 5-year-old (ELI5 style). Break down the purpose of variables, loops, functions, inputs, and outputs using simple analogies where helpful. Do NOT include bug reports, security audits, or rewritten code. Do NOT output conversational preambles. Focus entirely on providing a thorough, highly readable, and beginner-friendly Code Explanation.'
+    'code_analyzer' = 'You are a senior software architect and technical lead. Provide a clear, detailed, and highly technical explanation of the user''s code in structured bullet points (pointers). Explain the code''s architecture, types, functions, control flow, error handling, and performance characteristics in professional engineering terms. Do NOT use analogies, childish metaphors, or conversational preambles. Do NOT output markdown code fences or markdown headings (no ### headings). Provide only clean, professional, and easily scannable technical pointers.'
 }
 
 # Global hotkey id -> tone key
@@ -112,6 +112,8 @@ function Clean-Output {
     # Strip markdown code fences
     $s = $s -replace '^\s*```[a-zA-Z]*\s*', ''
     $s = $s -replace '\s*```\s*$', ''
+    # Strip markdown header hashes (e.g. ### Header)
+    $s = $s -replace '(?m)^\s*#{1,6}\s*', ''
     # Strip conversational preambles ("Sure,", "Here is the polished text:", etc.)
     $s = $s -replace '^\s*(?:Sure|Okay|OK|Certainly|I have polished the text|Here is the result|Here is the rephrased message)[,!.:]?\s+', ''
     $s = $s -replace '^\s*Here(?:''s| is)(?: the)?\s*(?:polished|rephrased|concise|friendly|corrected)\s*(?:text|message|version)?[^:\n]{0,40}:\s*', ''
@@ -302,8 +304,8 @@ function Invoke-Polish {
             $activeModel = $SqlModel
         }
         'code_analyzer' {
-            $guard = ' The code to explain is inside <message></message> tags. You must structure your output as a detailed, step-by-step Code Explanation written in plain, intuitive language as if explaining to a 5-year-old (ELI5 style). Use clear bullet points and simple analogies. Do NOT include bug reports, security audits, or corrected code rewrites. Do NOT add conversational preambles. Provide only the clear, detailed Code Explanation.'
-            $temp = 0.25; $predict = 1500; $ctx = 8192
+            $guard = ' The code to explain is inside <message></message> tags. You must structure your output as clear, professional technical bullet points (pointers) breaking down the code step-by-step:`n`nCode Explanation:`n- [Technical pointer 1: type definitions / data models]`n- [Technical pointer 2: function logic & API execution flow]`n- [Technical pointer 3: error handling & return values]`n`nDo NOT use markdown headings (no # or ### headings), nested sub-bullets, or analogies. Do NOT add conversational preambles. Return only clean, professional technical pointers.'
+            $temp = 0.15; $predict = 1500; $ctx = 8192
             $activeModel = $CodeAnalyzerModel
         }
         'summary' {
