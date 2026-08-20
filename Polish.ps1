@@ -886,8 +886,10 @@ function Show-ResultPopup {
         # DPI-aware sizing: scale hard-coded pixel dimensions so the header band
         # grows with the (point-based) font and never clips on >100% displays.
         $sc = Get-UiScale $form
-        $form.ClientSize = Scale-Size $sc 560 (if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 510 } else { 430 })
-        $form.MinimumSize = Scale-Size $sc 440 (if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 420 } else { 320 })
+        $popH = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 510 } else { 430 }
+        $minH = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 420 } else { 320 }
+        $form.ClientSize = Scale-Size $sc 560 $popH
+        $form.MinimumSize = Scale-Size $sc 440 $minH
         Center-Form $form
 
         # Header (top band)
