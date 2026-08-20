@@ -788,7 +788,7 @@ function Format-RichTextHeaders {
     param($RichTextBox)
     if (-not $RichTextBox -or $RichTextBox.IsDisposed -or -not $RichTextBox.Text) { return }
     try {
-        $headers = @('SQL Analysis:', 'Dialect:', 'Code Explanation:', 'Language:', 'Functional Summary:', 'Technical Summary:', 'Improvements:', 'Issues Identified:', 'Corrected SQL:', 'Issues & Improvements:', 'Corrected Code:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
+        $headers = @('Q:', 'A:', 'SQL Analysis:', 'Dialect:', 'Code Explanation:', 'Language:', 'Functional Summary:', 'Technical Summary:', 'Improvements:', 'Issues Identified:', 'Corrected SQL:', 'Issues & Improvements:', 'Corrected Code:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
         $baseFont = $RichTextBox.Font
         $boldFont = New-Object System.Drawing.Font($baseFont.FontFamily, $baseFont.Size, [System.Drawing.FontStyle]::Bold)
         $text = $RichTextBox.Text
@@ -893,10 +893,11 @@ function Show-ResultPopup {
         # DPI-aware sizing: scale hard-coded pixel dimensions so the header band
         # grows with the (point-based) font and never clips on >100% displays.
         $sc = Get-UiScale $form
-        $popH = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 510 } else { 430 }
+        $popW = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 700 } else { 560 }
+        $popH = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 520 } else { 430 }
         $minH = if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 420 } else { 320 }
-        $form.ClientSize = Scale-Size $sc 560 $popH
-        $form.MinimumSize = Scale-Size $sc 440 $minH
+        $form.ClientSize = Scale-Size $sc $popW $popH
+        $form.MinimumSize = Scale-Size $sc 480 $minH
         Center-Form $form
 
         # Header (top band)
@@ -1021,7 +1022,16 @@ function Show-ResultPopup {
 
                 try {
                     if (-not $tb.IsDisposed) {
-                        $tb.AppendText("`r`n`r`nQ: $q`r`n`r`nA: ")
+                        $startPos = $tb.TextLength
+                        $qStr = "`r`n`r`nQ: $q`r`n`r`nA: "
+                        $tb.AppendText($qStr)
+
+                        # Bold the user question text
+                        $qHeaderLen = ("`r`n`r`nQ: $q").Length
+                        $tb.Select($startPos + 4, $qHeaderLen - 4)
+                        $boldFont = New-Object System.Drawing.Font($tb.Font.FontFamily, $tb.Font.Size, [System.Drawing.FontStyle]::Bold)
+                        $tb.SelectionFont = $boldFont
+
                         $tb.Select($tb.TextLength, 0)
                         $tb.ScrollToCaret()
                         Format-RichTextHeaders $tb
