@@ -1,23 +1,23 @@
-# Polish  —  v1.7 (Full)
+# Polish  —  v1.8 (Full)
 
 Rephrase / polish text **anywhere** (Slack, Teams, Outlook, browser) with a
 **local** AI model. Select text, press a hotkey, and the polished version
 replaces it in place. No manual copy-pasting into ChatGPT/Claude — most
 work is local, though some high-precision tasks use the cloud.
 
-[![Download Polish v1.7 Zip](https://img.shields.io/badge/Download-Polish--v1.7.zip-00A699?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/vinayhg87/polish/raw/main/Polish-v1.7.zip)
+[![Download Polish v1.8 Zip](https://img.shields.io/badge/Download-Polish--v1.8.zip-00A699?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/vinayhg87/polish/raw/main/Polish-v1.8.zip)
 
 ## Quick Download & Setup (one time)
 
-📥 **[Click Here to Download Polish-v1.7.zip](https://github.com/vinayhg87/polish/raw/main/Polish-v1.7.zip)** (Direct Zip Download)
+📥 **[Click Here to Download Polish-v1.8.zip](https://github.com/vinayhg87/polish/raw/main/Polish-v1.8.zip)** (Direct Zip Download)
 
-1. **Unzip `Polish-v1.7.zip`** to any folder on your machine.
+1. **Unzip `Polish-v1.8.zip`** to any folder on your machine.
 2. **Right-click `setup.bat` → "Run as administrator"** (or double-click). It installs Ollama and downloads the local model (`qwen2.5:0.5b`, ~400 MB).
 3. **Right-click `Start-Polish.bat` → "Run as administrator"** to launch Polish. A tray icon appears near your clock and a "Ready" notification pops up.
 4. *(Optional)* **Right-click `Install-Autostart.bat` → "Run as administrator"** so Polish starts automatically at login.
 
 > 💡 **Recommended Pro Tip (Run as Administrator):**
-> Always right-click `Start-Polish.bat` and select **"Run as administrator"**. Running as Admin allows Polish to paste in-place into elevated applications (such as SQL Developer, DBeaver, Admin terminals, and Enterprise tools) without Windows UIPI blocking keystrokes.
+> Always right-click `Start-Polish.bat` and select **"Run as administrator"**. Running as Admin allows Polish to paste in-place into elevated applications (such as SQL Developer, DBeaver, VS Code, Admin terminals, and Enterprise tools) without Windows UIPI blocking keystrokes.
 
 ## Hotkeys
 
@@ -29,6 +29,8 @@ work is local, though some high-precision tasks use the cloud.
 | `Ctrl + Alt + G` | **Grammar** — fix spelling/grammar only |
 | `Ctrl + Alt + S` | **Summarize** — condense a long email/thread |
 | `Ctrl + Alt + Q` | **Fix SQL** — explain SQL issues in pointers & show corrected query |
+| `Ctrl + Alt + J` | **Format JSON** — instant, no-AI local JSON formatting and validation |
+| `Ctrl + Alt + A` | **Analyze Code** — explain code, find security bugs/performance bottlenecks & show corrected code |
 | `Ctrl + Alt + X` | Quit |
 
 **Use it:** highlight some text → press a hotkey → wait ~2–5 sec → the text is replaced.
@@ -38,11 +40,16 @@ work is local, though some high-precision tasks use the cloud.
 bullet points, and provides the corrected Oracle SQL query. This uses a high-precision cloud model
 (`gemma4:cloud`) to ensure accuracy for complex queries.
 
+**Analyzing Code:** in VS Code / PyCharm / Visual Studio / any text editor, select any code snippet and press
+`Ctrl + Alt + A`. It provides a code explanation, identifies security vulnerabilities & performance issues, and provides corrected, production-ready code. Clicking **Replace** pastes *only* the corrected code back into your editor.
+
+**Formatting JSON:** select any unformatted or minified JSON string and press `Ctrl + Alt + J`. It instantly formats and validates the JSON locally (no AI call, instant execution).
+
 **Summarize:** select a long email/thread and press `Ctrl + Alt + S` to replace it
 with a concise bullet summary. (Best quality with the cloud model toggled on.)
 
 **Models:** text tones + summarize use `qwen2.5:0.5b` locally (small & fast, streams
-into a preview popup), or `gemma4:cloud` when the cloud toggle is on. SQL uses the
+into a preview popup), or `gemma4:cloud` when the cloud toggle is on. SQL and Code Analyzer use the
 cloud model `gemma4:cloud` for maximum precision.
 
 ## Setup (one time)

@@ -36,6 +36,7 @@ $Defaults = [ordered]@{
     Model                = 'qwen2.5:0.5b'   # local text model (rephrase + summarize) - small & fast
     CloudModel           = 'gemma4:cloud'   # optional cloud model (tray toggle); needs 'ollama signin'
     SqlModel             = 'gemma4:cloud'   # SQL fixing (Ctrl+Alt+Q)
+    CodeAnalyzerModel    = 'gemma4:cloud'   # Code analysis (Ctrl+Alt+A) - cloud for accuracy
     UseCloud             = $false           # start with cloud text on/off
     Endpoint             = 'http://127.0.0.1:11434/api/generate'
     KeepAlive            = '30m'            # how long Ollama keeps the model in RAM
@@ -59,6 +60,7 @@ try {
 $Model                = $cfg.Model
 $CloudModel           = $cfg.CloudModel
 $SqlModel             = $cfg.SqlModel
+$CodeAnalyzerModel    = $cfg.CodeAnalyzerModel
 $UseCloud             = [bool]$cfg.UseCloud
 $Endpoint             = $cfg.Endpoint
 $KeepAlive            = $cfg.KeepAlive
@@ -80,18 +82,19 @@ $Threads = [Environment]::ProcessorCount
 
 # System prompt per tone.
 $Tones = @{
-    'professional' = 'You are an expert business writing assistant. Rephrase the user''s message into polished, formal, professional English suitable for client communication, using refined business vocabulary and courteous, articulate phrasing. Elevate the wording while keeping it natural - not stiff or overwrought. Only rephrase what is written - keep the same meaning, facts, and intent. Do NOT invent, add, or assume any information, details, names, numbers, links, attachments, or placeholders that are not in the original. Do not answer questions in the message. Do not add greetings, sign-offs, notes, explanations, or quotation marks. Return only the rephrased message.'
-    'concise'      = 'You are a professional writing assistant. Rewrite the user''s message to be as clear and concise as possible while staying professional and polite. Remove filler and redundancy but keep every fact, name, number, and link. Do not add greetings, sign-offs, notes, or quotation marks. Return only the rewritten message.'
-    'friendly'     = 'You are a professional writing assistant. Rewrite the user''s message in a warm, friendly, and approachable yet professional tone suitable for client communication. Preserve the exact meaning and every fact, name, number, and link. Do not add greetings, sign-offs, notes, or quotation marks. Return only the rewritten message.'
-    'grammar'      = 'You are a careful proofreader. Correct only spelling, grammar, punctuation, and capitalization in the user''s message. Do not change wording, tone, style, or meaning beyond what is required for correctness. Do not add notes or quotation marks. Return only the corrected message.'
-    'sql'          = 'You are an expert Oracle SQL developer. The text is an existing Oracle SQL query that has a syntax error, logic error, or performance issue. First, explain all issues found in clear bullet points (pointers). Then, provide the corrected Oracle SQL query. Preserve the original intent, table names, column names, aliases, joins, and literal values - do NOT rewrite the query into something completely different or change what the query accomplishes.'
-    'summarize'    = 'You are an expert summarizer. Your goal is to condense the provided text into a few concise, accurate bullet points. Focus on main decisions, key changes (including dates and numbers), action items, and deadlines. Ensure all facts remain accurate and that no external information is added.'
+    'professional'  = 'You are an expert business writing assistant. Rephrase the user''s message into polished, formal, professional English suitable for client communication, using refined business vocabulary and courteous, articulate phrasing. Elevate the wording while keeping it natural - not stiff or overwrought. Only rephrase what is written - keep the same meaning, facts, and intent. Do NOT invent, add, or assume any information, details, names, numbers, links, attachments, or placeholders that are not in the original. Do not answer questions in the message. Do not add greetings, sign-offs, notes, explanations, or quotation marks. Return only the rephrased message.'
+    'concise'       = 'You are a professional writing assistant. Rewrite the user''s message to be as clear and concise as possible while staying professional and polite. Remove filler and redundancy but keep every fact, name, number, and link. Do not add greetings, sign-offs, notes, or quotation marks. Return only the rewritten message.'
+    'friendly'      = 'You are a professional writing assistant. Rewrite the user''s message in a warm, friendly, and approachable yet professional tone suitable for client communication. Preserve the exact meaning and every fact, name, number, and link. Do not add greetings, sign-offs, notes, or quotation marks. Return only the rewritten message.'
+    'grammar'       = 'You are a careful proofreader. Correct only spelling, grammar, punctuation, and capitalization in the user''s message. Do not change wording, tone, style, or meaning beyond what is required for correctness. Do not add notes or quotation marks. Return only the corrected message.'
+    'sql'           = 'You are an expert Oracle SQL developer. The text is an existing Oracle SQL query that has a syntax error, logic error, or performance issue. First, explain all issues found in clear bullet points (pointers). Then, provide the corrected Oracle SQL query. Preserve the original intent, table names, column names, aliases, joins, and literal values - do NOT rewrite the query into something completely different or change what the query accomplishes.'
+    'summarize'     = 'You are an expert summarizer. Your goal is to condense the provided text into a few concise, accurate bullet points. Focus on main decisions, key changes (including dates and numbers), action items, and deadlines. Ensure all facts remain accurate and that no external information is added.'
+    'code_analyzer' = 'You are a principal software architect and senior security auditor. The user will provide a code snippet. First, explain what the code does in clear bullet points. Then, identify any security vulnerabilities, logic bugs, edge cases, and performance bottlenecks. Finally, provide the corrected and improved code. Preserve the original programming language, variable names, and intent - do NOT rewrite the code into a completely different solution or change what it accomplishes.'
 }
 
 # Global hotkey id -> tone key
 $IdToTone = @{ 1 = 'professional'; 2 = 'concise'; 3 = 'friendly'; 4 = 'grammar'; 6 = 'summarize' }
-# Global hotkey id -> virtual-key code
-$HotkeyVk = @{ 1 = 0x50; 2 = 0x43; 3 = 0x46; 4 = 0x47; 5 = 0x51; 6 = 0x53; 9 = 0x58 }
+# Global hotkey id -> virtual-key code (5=Q, 6=S, 7=J, 8=A, 9=X)
+$HotkeyVk = @{ 1 = 0x50; 2 = 0x43; 3 = 0x46; 4 = 0x47; 5 = 0x51; 6 = 0x53; 7 = 0x4A; 8 = 0x41; 9 = 0x58 }
 
 # ---------------------------------------------------------------------------
 # Core: call the local model
@@ -127,6 +130,18 @@ function Clean-Output {
     return $s
 }
 
+function Format-JsonText {
+    param([string]$Text)
+    if (-not $Text) { return @{ Success = $false; Result = 'No text provided.' } }
+    try {
+        $parsed = $Text | ConvertFrom-Json
+        $formatted = $parsed | ConvertTo-Json -Depth 10
+        return @{ Success = $true; Result = $formatted }
+    } catch {
+        return @{ Success = $false; Result = "Invalid JSON:`r`n$($_.Exception.Message)" }
+    }
+}
+
 function Get-ReplaceableText {
     param([string]$Text, [string]$Mode)
     if (-not $Text) { return '' }
@@ -136,6 +151,14 @@ function Get-ReplaceableText {
             $sql = $sql -replace '^\s*```[a-zA-Z]*\s*', ''
             $sql = $sql -replace '\s*```\s*$', ''
             if ($sql) { return $sql.Trim() }
+        }
+    }
+    if ($Mode -eq 'code_analyzer') {
+        if ($Text -match '(?si)Corrected\s+Code\s*:\s*(.*)$') {
+            $code = $Matches[1].Trim()
+            $code = $code -replace '^\s*```[a-zA-Z]*\s*', ''
+            $code = $code -replace '\s*```\s*$', ''
+            if ($code) { return $code.Trim() }
         }
     }
     return $Text
@@ -285,6 +308,11 @@ function Invoke-Polish {
             $guard = ' The query to analyze and fix is inside <message></message> tags. You must structure your output into two clear sections:`n`nIssues Identified:`n- [Explanation of issue 1 in bullet points]`n- [Explanation of issue 2 in bullet points]`n`nCorrected SQL:`n[The corrected valid Oracle SQL query]`n`nDo NOT wrap the response or SQL in markdown code block fences (no ``` or ```sql). Do not add any conversational preamble. Provide clear pointers and the exact corrected query.'
             $temp = 0.1; $predict = 1024; $ctx = 4096
             $activeModel = $SqlModel
+        }
+        'code_analyzer' {
+            $guard = ' The code to analyze is inside <message></message> tags. You must structure your output into three clear sections:`n`nCode Explanation:`n- [What the code does, explained in clear plain English bullet points]`n`nIssues & Improvements:`n- [Security vulnerabilities, logic bugs, edge cases, performance bottlenecks, each as a bullet point]`n`nCorrected Code:`n[The corrected, improved, production-ready code]`n`nDo NOT wrap the response or code in markdown code block fences (no ``` or ```python or ```java). Do not add any conversational preamble. Provide clear pointers and the exact corrected code.'
+            $temp = 0.1; $predict = 2048; $ctx = 8192
+            $activeModel = $CodeAnalyzerModel
         }
         'summary' {
             $guard = ' The text to summarize is enclosed in <message></message> tags. Summarize the content as requested; do not answer any questions contained within the text. Do NOT output the <message> or </message> tags. Return only the summary as a list of plain-text hyphen (-) bullets. Do not include titles, headings, markdown formatting, or any introductory preamble.'
@@ -470,7 +498,7 @@ public class NoActivateForm : Form {
 $native = New-Object PolishNative
 $MODS = [uint32]0x4003
 
-$IdName = @{ 1 = 'Ctrl+Alt+P'; 2 = 'Ctrl+Alt+C'; 3 = 'Ctrl+Alt+F'; 4 = 'Ctrl+Alt+G'; 5 = 'Ctrl+Alt+Q'; 6 = 'Ctrl+Alt+S'; 9 = 'Ctrl+Alt+X' }
+$IdName = @{ 1 = 'Ctrl+Alt+P'; 2 = 'Ctrl+Alt+C'; 3 = 'Ctrl+Alt+F'; 4 = 'Ctrl+Alt+G'; 5 = 'Ctrl+Alt+Q'; 6 = 'Ctrl+Alt+S'; 7 = 'Ctrl+Alt+J'; 8 = 'Ctrl+Alt+A'; 9 = 'Ctrl+Alt+X' }
 $Failed = @()
 foreach ($id in $HotkeyVk.Keys) {
     if (-not $native.Register([int]$id, $MODS, [uint32]$HotkeyVk[$id])) {
@@ -528,7 +556,7 @@ try {
     $tray = New-Object System.Windows.Forms.NotifyIcon
     try { $tray.Icon = New-PolishIcon; Log 'custom P icon set OK' } catch { $tray.Icon = [System.Drawing.SystemIcons]::Application; Log "ICON FALLBACK (generic icon in use): $($_.Exception.Message)" }
     $tray.Visible = $true
-    try { $tray.Text = 'Polish - rephrase / summarize / fix SQL' } catch { }
+    try { $tray.Text = 'Polish - rephrase / summarize / fix SQL / analyze code' } catch { }
     $menu = New-Object System.Windows.Forms.ContextMenuStrip
     $lbl = $menu.Items.Add('Polish is running'); $lbl.Enabled = $false
     [void]$menu.Items.Add('-')
@@ -540,6 +568,8 @@ try {
         'Ctrl+Alt+G   Grammar fix',
         'Ctrl+Alt+S   Summarize',
         'Ctrl+Alt+Q   Fix SQL',
+        'Ctrl+Alt+J   Format JSON',
+        'Ctrl+Alt+A   Analyze Code',
         'Ctrl+Alt+X   Quit'
     )
     foreach ($c in $cheats) { $ci = $menu.Items.Add($c); $ci.Enabled = $false }
@@ -677,8 +707,9 @@ function Scale-Point { param($s, [int]$x, [int]$y) New-Object System.Drawing.Poi
 function Get-ActiveModelInfo {
     param([string]$Mode)
     $name = switch ($Mode) {
-        'sql'   { $SqlModel }
-        default { if ($script:UseCloud) { $CloudModel } else { $Model } }
+        'sql'           { $SqlModel }
+        'code_analyzer' { $CodeAnalyzerModel }
+        default         { if ($script:UseCloud) { $CloudModel } else { $Model } }
     }
     $isCloud = ($name -like '*:cloud')
     return @{ Name = $name; IsCloud = $isCloud; Label = $(if ($isCloud) { 'Cloud' } else { 'Local' }) }
@@ -740,7 +771,7 @@ function Format-RichTextHeaders {
     param($RichTextBox)
     if (-not $RichTextBox -or $RichTextBox.IsDisposed -or -not $RichTextBox.Text) { return }
     try {
-        $headers = @('Issues Identified:', 'Corrected SQL:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
+        $headers = @('Issues Identified:', 'Corrected SQL:', 'Code Explanation:', 'Issues & Improvements:', 'Corrected Code:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
         $baseFont = $RichTextBox.Font
         $boldFont = New-Object System.Drawing.Font($baseFont.FontFamily, $baseFont.Size, [System.Drawing.FontStyle]::Bold)
         $text = $RichTextBox.Text
@@ -802,9 +833,13 @@ function Show-ResultPopup {
         $header.Controls.Add($title)
 
         # Model badge (right side of header): "Local - qwen2.5:0.5b" / "Cloud - gemma4:cloud"
-        $mi = Get-ActiveModelInfo $Mode
         $badge = New-Object System.Windows.Forms.Label
-        $badge.Text = "$($mi.Label) - $($mi.Name)"
+        if ($Mode -eq 'json') {
+            $badge.Text = "Local - JSON Formatter"
+        } else {
+            $mi = Get-ActiveModelInfo $Mode
+            $badge.Text = "$($mi.Label) - $($mi.Name)"
+        }
         $badge.AutoSize = $true
         $badge.Font = New-Object System.Drawing.Font('Segoe UI', 9)
         $badge.ForeColor = [System.Drawing.Color]::FromArgb(215, 245, 240)
@@ -833,8 +868,10 @@ function Show-ResultPopup {
         $btnClose = New-FlatButton -Text 'Close'
         $btnCopy  = New-FlatButton -Text 'Copy' -Accent:(-not $AllowReplace)
         $btnRegen = New-FlatButton -Text 'Regenerate'
+        if ($Mode -eq 'json') { $btnRegen.Visible = $false }
         $btnReplace = $null
-        $order = @($btnClose, $btnCopy, $btnRegen)
+        $order = @($btnClose, $btnCopy)
+        if ($Mode -ne 'json') { $order += $btnRegen }
         if ($AllowReplace) { $btnReplace = New-FlatButton -Text 'Replace' -Accent; $order += $btnReplace }
         $footer = New-ButtonBar -Right2Left $order
 
@@ -863,17 +900,21 @@ function Show-ResultPopup {
             try {
                 $btnCopy.Enabled = $false; $btnRegen.Enabled = $false
                 if ($btnReplace) { $btnReplace.Enabled = $false }
-                $title.Text = 'Generating...'
+                $title.Text = if ($Mode -eq 'json') { $baseTitle } else { 'Generating...' }
                 $tb.Clear()
                 [System.Windows.Forms.Application]::DoEvents()
-                # For text mode, use the currently-selected tone's prompt (tone switcher).
-                $sys = if ($Mode -eq 'text' -and $ToneMap.ContainsKey($key)) { $ToneMap[$key] } else { $System }
-                $full = Invoke-Polish -Text $Original -System $sys -Mode $Mode -Stream -Target $tb -CancelState $state
+                if ($Mode -eq 'json') {
+                    $full = if ($System) { $System } else { (Format-JsonText -Text $Original).Result }
+                } else {
+                    # For text mode, use the currently-selected tone's prompt (tone switcher).
+                    $sys = if ($Mode -eq 'text' -and $ToneMap.ContainsKey($key)) { $ToneMap[$key] } else { $System }
+                    $full = Invoke-Polish -Text $Original -System $sys -Mode $Mode -Stream -Target $tb -CancelState $state
+                }
                 if ($state.Cancelled) { return }
                 $state.Result = $full
                 $state.Cache[$key] = $full     # remember this tone's result for instant re-view
                 if (-not $tb.IsDisposed) { $tb.Text = $full; Format-RichTextHeaders $tb; $tb.Select(0, 0) }
-                if (-not $state.Historied) { Add-History -Tone $key -Original $Original -Result $full; $state.Historied = $true }
+                if (-not $state.Historied -and $Mode -ne 'json') { Add-History -Tone $key -Original $Original -Result $full; $state.Historied = $true }
             } catch {
                 if (-not $state.Cancelled -and -not $tb.IsDisposed) { $tb.Text = "Couldn't reach the model. Is Ollama running?`r`n`r`n$($_.Exception.Message)" }
             } finally {
@@ -1292,7 +1333,7 @@ Log "entering main loop - Polish is ready"
 while ($true) {
     $id = $native.WaitForHotkey()
     if ($id -eq 9 -or $id -eq -1) { break }
-    if (-not ($IdToTone.ContainsKey($id) -or $id -eq 5)) { continue }
+    if (-not ($IdToTone.ContainsKey($id) -or $id -eq 5 -or $id -eq 7 -or $id -eq 8)) { continue }
 
     # Wrap the whole per-hotkey body so one error can never crash the loop.
     try {
@@ -1301,11 +1342,27 @@ while ($true) {
         $sel = Get-SelectedText
         if (-not $sel) { Show-Note 'No text selected - highlight some text first.' 'Warning'; continue }
 
-        if ($id -eq 5)     { $mode = 'sql';     $toneKey = 'sql' }
-        elseif ($id -eq 6) { $mode = 'summary'; $toneKey = 'summarize' }
-        else               { $mode = 'text';    $toneKey = $IdToTone[$id] }
+        if ($id -eq 5)     { $mode = 'sql';           $toneKey = 'sql' }
+        elseif ($id -eq 7) { $mode = 'json';          $toneKey = 'json' }
+        elseif ($id -eq 8) { $mode = 'code_analyzer'; $toneKey = 'code_analyzer' }
+        elseif ($id -eq 6) { $mode = 'summary';       $toneKey = 'summarize' }
+        else               { $mode = 'text';          $toneKey = $IdToTone[$id] }
 
-        if ($id -eq 6) {
+        if ($id -eq 7) {
+            # JSON Formatter: instant local formatting via ConvertFrom-Json / ConvertTo-Json (no AI call)
+            $jsonRes = Format-JsonText -Text $sel
+            if (-not $jsonRes.Success) {
+                Show-Note $jsonRes.Result 'Warning'
+                continue
+            }
+            if ($PreviewBeforeReplace) {
+                # Display formatted JSON in popup with Replace/Copy buttons
+                Show-ResultPopup -Original $sel -System '' -Mode 'text' -Tone 'json' -TargetHwnd $targetHwnd -AllowReplace $true
+            } else {
+                Set-AndPaste $jsonRes.Result -TargetHwnd $targetHwnd
+            }
+        }
+        elseif ($id -eq 6) {
             # Summaries stream into a popup (view / copy / regenerate) - never pasted.
             Show-ResultPopup -Original $sel -System $Tones[$toneKey] -Mode 'summary' -Tone $toneKey -AllowReplace $false
         }

@@ -2,6 +2,19 @@
 
 All notable changes, architectural updates, and version history for **Polish** (Local AI Text & SQL Polisher for Windows) are documented in this file.
 
+## [v1.8.0] - 2026-08-20
+
+### Added
+- **Instant JSON Formatter & Validator (`Ctrl + Alt + J`)**:
+  - Pure PowerShell local execution (no AI call, zero latency, works 100% offline).
+  - Highlight minified or unformatted JSON in any app -> press `Ctrl+Alt+J` -> formats with proper 4-space indentation.
+  - Automatically validates JSON structure; displays line-level error notes if JSON is broken.
+- **AI Code Analyzer & Reviewer (`Ctrl + Alt + A`)**:
+  - Cloud-powered (`gemma4:cloud`) code architect & security auditor for any programming language (Python, C#, Java, JS/TS, Go, Rust, C++, SQL, Shell).
+  - Produces three structured output sections: **`Code Explanation:`**, **`Issues & Improvements:`** (security risks, logic bugs, performance bottlenecks), and **`Corrected Code:`**.
+  - Clicking **Replace** extracts *only* the clean corrected code block and pastes it back into your editor (VS Code, PyCharm, Visual Studio, Eclipse).
+  - Integrated with the **Outbound Security Engine** to mask hardcoded API keys, passwords, DB URIs, and IP addresses before cloud analysis.
+
 ---
 
 ## [v1.7.0] - 2026-08-19

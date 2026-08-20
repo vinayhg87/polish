@@ -1,7 +1,8 @@
-﻿{
+{
     "Model":  "qwen2.5:0.5b",
     "CloudModel":  "gemma4:cloud",
     "SqlModel":  "gemma4:cloud",
+    "CodeAnalyzerModel":  "gemma4:cloud",
     "UseCloud":  false,
     "Endpoint":  "http://127.0.0.1:11434/api/generate",
     "KeepAlive":  "30m",
