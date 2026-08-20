@@ -801,12 +801,13 @@ function Show-ResultPopup {
     )
     try {
         $isSummary = ($Mode -eq 'summary')
-        $baseTitle = if ($isSummary) { 'Summary' } else { 'Preview' }
+        $isJson = ($Mode -eq 'json')
+        $baseTitle = if ($isSummary) { 'Summary' } elseif ($isJson) { 'Formatted JSON' } else { 'Preview' }
         $state = @{ Result = ''; Copied = $false; OrigClip = $script:OrigClip; Cancelled = $false; Generating = $false; Historied = $false; ToneKey = $Tone; Cache = @{} }
         $ToneMap = $Tones   # capture the tone->prompt map for the tone switcher
 
         $form = New-Object System.Windows.Forms.Form
-        $form.Text = if ($isSummary) { 'Polish - Summary' } else { 'Polish - Preview' }
+        $form.Text = if ($isSummary) { 'Polish - Summary' } elseif ($isJson) { 'Polish - JSON Formatter' } else { 'Polish - Preview' }
         $form.StartPosition = 'CenterScreen'
         $form.AutoScaleMode = 'None'
         $form.BackColor = [System.Drawing.Color]::White
@@ -1357,7 +1358,7 @@ while ($true) {
             }
             if ($PreviewBeforeReplace) {
                 # Display formatted JSON in popup with Replace/Copy buttons
-                Show-ResultPopup -Original $sel -System '' -Mode 'text' -Tone 'json' -TargetHwnd $targetHwnd -AllowReplace $true
+                Show-ResultPopup -Original $sel -System $jsonRes.Result -Mode 'json' -Tone 'json' -TargetHwnd $targetHwnd -AllowReplace $true
             } else {
                 Set-AndPaste $jsonRes.Result -TargetHwnd $targetHwnd
             }
