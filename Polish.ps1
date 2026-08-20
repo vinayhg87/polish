@@ -88,7 +88,15 @@ $Tones = @{
     'grammar'       = 'You are a careful proofreader. Correct only spelling, grammar, punctuation, and capitalization in the user''s message. Do not change wording, tone, style, or meaning beyond what is required for correctness. Do not add notes or quotation marks. Return only the corrected message.'
     'sql'           = 'You are an expert Oracle SQL developer. The text is an existing Oracle SQL query that has a syntax error, logic error, or performance issue. First, explain all issues found in clear bullet points (pointers). Then, provide the corrected Oracle SQL query. Preserve the original intent, table names, column names, aliases, joins, and literal values - do NOT rewrite the query into something completely different or change what the query accomplishes.'
     'summarize'     = 'You are an expert summarizer. Your goal is to condense the provided text into a few concise, accurate bullet points. Focus on main decisions, key changes (including dates and numbers), action items, and deadlines. Ensure all facts remain accurate and that no external information is added.'
-    'code_analyzer' = 'You are a senior software architect reviewing code. First and most importantly, start with a clear, high-level summary bullet of what the code does FUNCTIONALLY (its overall business purpose, end-to-end user flow, and what end result it achieves). Then, follow with technical bullet points breaking down its components, data models, API execution flow, and error handling. Keep the explanation professional, technical, and scannable. Do NOT output markdown code fences or markdown headings (no ### headings). Return only clean, professional technical pointers starting with the high-level functional purpose.'
+    'code_analyzer' = 'You are a senior software architect reviewing code. Analyze the user''s code and format your response EXACTLY into these four sections:
+
+Code Explanation:
+Language: [Detected programming language, e.g. TypeScript, Java, Python, C#, etc.]
+Functional Summary: [Detailed summary of what this code does functionally, its business purpose, and what end result it accomplishes]
+Technical Summary: [Detailed explanation of how it is implemented technically — architecture, data structures, API calls, logic flow, and error handling]
+Improvements: [First, rate the code quality on a scale of 1 to 10. Only provide improvement suggestions if the score is below 5 due to significant correctness, security, or performance issues. If the score is 5 or above, state that the code meets technical standards without needing changes.]
+
+Do NOT add conversational preambles (no "Sure!"). Do NOT wrap in markdown code fences.'
 }
 
 # Global hotkey id -> tone key
@@ -304,7 +312,7 @@ function Invoke-Polish {
             $activeModel = $SqlModel
         }
         'code_analyzer' {
-            $guard = ' The code to explain is inside <message></message> tags. You must structure your output as technical bullet points starting with the high-level functional purpose:`n`nCode Explanation:`n- [Functional Summary: High-level business purpose, end-to-end goal, and what this code accomplishes overall]`n- [Technical pointer 1: data models & type definitions]`n- [Technical pointer 2: core function logic & API execution flow]`n- [Technical pointer 3: error handling & return behavior]`n`nDo NOT use markdown headings (no # or ### headings), nested sub-bullets, or analogies. Do NOT add conversational preambles. Start immediately with the high-level functional summary bullet.'
+            $guard = ' The code to explain is inside <message></message> tags. You MUST structure your output EXACTLY as follows:`n`nCode Explanation:`nLanguage: [Detected programming language]`nFunctional Summary:`n[Detailed summary of what this code does functionally in detail]`n`nTechnical Summary:`n[Detailed explanation of how it is implemented technically in detail]`n`nImprovements:`n[Rate the code on a scale of 1 to 10. Only provide improvement suggestions if the score is below 5 due to extreme deviation in functionality, performance, or security standards. If score is 5 or above, state that the code meets standards without needing improvements.]`n`nDo NOT use markdown headings (no # or ### headings). Do NOT add conversational preambles.'
             $temp = 0.15; $predict = 1500; $ctx = 8192
             $activeModel = $CodeAnalyzerModel
         }
@@ -765,7 +773,7 @@ function Format-RichTextHeaders {
     param($RichTextBox)
     if (-not $RichTextBox -or $RichTextBox.IsDisposed -or -not $RichTextBox.Text) { return }
     try {
-        $headers = @('Issues Identified:', 'Corrected SQL:', 'Code Explanation:', 'Issues & Improvements:', 'Corrected Code:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
+        $headers = @('Code Explanation:', 'Language:', 'Functional Summary:', 'Technical Summary:', 'Improvements:', 'Issues Identified:', 'Corrected SQL:', 'Issues & Improvements:', 'Corrected Code:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
         $baseFont = $RichTextBox.Font
         $boldFont = New-Object System.Drawing.Font($baseFont.FontFamily, $baseFont.Size, [System.Drawing.FontStyle]::Bold)
         $text = $RichTextBox.Text
