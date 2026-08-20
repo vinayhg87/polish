@@ -788,9 +788,22 @@ function Format-RichTextHeaders {
     param($RichTextBox)
     if (-not $RichTextBox -or $RichTextBox.IsDisposed -or -not $RichTextBox.Text) { return }
     try {
-        $headers = @('Q:', 'A:', 'SQL Analysis:', 'Dialect:', 'Code Explanation:', 'Language:', 'Functional Summary:', 'Technical Summary:', 'Improvements:', 'Issues Identified:', 'Corrected SQL:', 'Issues & Improvements:', 'Corrected Code:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
         $baseFont = $RichTextBox.Font
         $boldFont = New-Object System.Drawing.Font($baseFont.FontFamily, $baseFont.Size, [System.Drawing.FontStyle]::Bold)
+
+        # Convert **text** markdown syntax into real RichTextBox bold font and strip raw ** asterisks
+        while ($true) {
+            $m = [regex]::Match($RichTextBox.Text, '\*\*([^*]+)\*\*')
+            if (-not $m.Success) { break }
+            $boldText = $m.Groups[1].Value
+            $startIdx = $m.Index
+            $RichTextBox.Select($startIdx, $m.Length)
+            $RichTextBox.SelectedText = $boldText
+            $RichTextBox.Select($startIdx, $boldText.Length)
+            $RichTextBox.SelectionFont = $boldFont
+        }
+
+        $headers = @('Q:', 'A:', 'SQL Analysis:', 'Dialect:', 'Code Explanation:', 'Language:', 'Functional Summary:', 'Technical Summary:', 'Improvements:', 'Issues Identified:', 'Corrected SQL:', 'Issues & Improvements:', 'Corrected Code:', 'TONE:', 'WHEN:', '--- ORIGINAL ---', '--- RESULT ---', 'TIMESTAMP:', 'CLOUD MODEL:', 'ITEMS REDACTED:', '--- PAYLOAD TRANSMITTED TO CLOUD (OLLAMA SERVERS) ---', '--- LOCAL REDACTION TOKEN MAP (STORED 100% LOCALLY) ---')
         $text = $RichTextBox.Text
         foreach ($hdr in $headers) {
             $idx = 0
