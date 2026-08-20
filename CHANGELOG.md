@@ -5,15 +5,17 @@ All notable changes, architectural updates, and version history for **Polish** (
 ## [v1.8.0] - 2026-08-20
 
 ### Added
-- **Instant JSON Formatter & Validator (`Ctrl + Alt + J`)**:
+- **Instant JSON Formatter & Color Beautifier (`Ctrl + Alt + J`)**:
   - Pure PowerShell local execution (no AI call, zero latency, works 100% offline).
-  - Highlight minified or unformatted JSON in any app -> press `Ctrl+Alt+J` -> formats with proper 4-space indentation.
-  - Automatically validates JSON structure; displays line-level error notes if JSON is broken.
-- **AI Code Analyzer & Reviewer (`Ctrl + Alt + A`)**:
-  - Cloud-powered (`gemma4:cloud`) code architect & security auditor for any programming language (Python, C#, Java, JS/TS, Go, Rust, C++, SQL, Shell).
-  - Produces three structured output sections: **`Code Explanation:`**, **`Issues & Improvements:`** (security risks, logic bugs, performance bottlenecks), and **`Corrected Code:`**.
-  - Clicking **Replace** extracts *only* the clean corrected code block and pastes it back into your editor (VS Code, PyCharm, Visual Studio, Eclipse).
-  - Integrated with the **Outbound Security Engine** to mask hardcoded API keys, passwords, DB URIs, and IP addresses before cloud analysis.
+  - Formats minified or raw JSON with clean 4-space indentation and WinForms RichTextBox syntax color highlighting (Keys, Strings, Numbers, Booleans/null).
+  - Automatically validates JSON structure and displays clear line-level parse errors if JSON is invalid.
+- **AI Code Analyser & Reviewer (`Ctrl + Alt + A`)**:
+  - Cloud-powered (`gemma4:cloud`) code architect reviewing any language (Python, TypeScript, Java, C#, Go, C++, Rust, SQL, PowerShell).
+  - Formatted into 4 clean sections: **`Language:`**, **`Functional Summary:`**, **`Technical Summary:`**, and **`Improvements:`** (1–10 quality rating score; suggestions provided conditionally only if score < 5).
+  - Integrated with the **Outbound Security Engine** to mask hardcoded credentials, API keys, passwords, DB URIs, and IP addresses before cloud analysis.
+- **Enhanced Fix SQL (`Ctrl + Alt + Q`)**:
+  - Aligned Fix SQL with the Code Analyser template structure (**`SQL Analysis:`**, **`Dialect:`**, **`Functional Summary:`**, **`Technical Summary:`**, **`Improvements:`**, **`Corrected SQL:`**).
+  - Skips redundant query rewrites when the SQL query is already valid and optimized.
 
 ---
 
