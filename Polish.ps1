@@ -888,7 +888,7 @@ function Show-ResultPopup {
         $form.AutoScaleMode = 'None'
         $form.BackColor = [System.Drawing.Color]::White
         $form.Font = New-Object System.Drawing.Font('Segoe UI', 10)
-        $form.TopMost = $true
+        $form.TopMost = $false
         try { $form.Icon = New-PolishIcon } catch { }
         # DPI-aware sizing: scale hard-coded pixel dimensions so the header band
         # grows with the (point-based) font and never clips on >100% displays.
