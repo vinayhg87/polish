@@ -961,17 +961,19 @@ function Show-ResultPopup {
             $txtQuestion.ForeColor = [System.Drawing.Color]::Gray
 
             $txtQuestion.add_GotFocus({
-                if ($this.Text -eq 'Ask a follow-up question about this code...') {
-                    $this.Text = ''
-                    $this.ForeColor = $script:Ink
+                param($s, $e)
+                if ($s.Text -eq 'Ask a follow-up question about this code...') {
+                    $s.Text = ''
+                    $s.ForeColor = $script:Ink
                 }
-            })
+            }.GetNewClosure())
             $txtQuestion.add_LostFocus({
-                if ([string]::IsNullOrWhiteSpace($this.Text)) {
-                    $this.Text = 'Ask a follow-up question about this code...'
-                    $this.ForeColor = [System.Drawing.Color]::Gray
+                param($s, $e)
+                if ([string]::IsNullOrWhiteSpace($s.Text)) {
+                    $s.Text = 'Ask a follow-up question about this code...'
+                    $s.ForeColor = [System.Drawing.Color]::Gray
                 }
-            })
+            }.GetNewClosure())
 
             $chatPanel.Controls.Add($txtQuestion)
             $chatPanel.Controls.Add($btnAsk)
