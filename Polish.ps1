@@ -968,7 +968,7 @@ function Show-ResultPopup {
 
             $chatPanel = New-Object System.Windows.Forms.Panel
             $chatPanel.Dock = 'Bottom'
-            $chatPanel.Height = [int](54 * $sc)
+            $chatPanel.Height = [int](52 * $sc)
             $chatPanel.Padding = New-Object System.Windows.Forms.Padding([int](14 * $sc), [int](10 * $sc), [int](14 * $sc), [int](10 * $sc))
             $chatPanel.BackColor = [System.Drawing.Color]::FromArgb(242, 244, 246)
 
@@ -988,11 +988,16 @@ function Show-ResultPopup {
             $boxPanel.Dock = 'Fill'
             $boxPanel.Padding = New-Object System.Windows.Forms.Padding(0, 0, [int](8 * $sc), 0)
 
+            $tbWrap = New-Object System.Windows.Forms.Panel
+            $tbWrap.Dock = 'Fill'
+            $tbWrap.BorderStyle = 'FixedSingle'
+            $tbWrap.BackColor = [System.Drawing.Color]::White
+            $tbWrap.Padding = New-Object System.Windows.Forms.Padding([int](6 * $sc), [int](5 * $sc), [int](6 * $sc), [int](4 * $sc))
+
             $txtQuestion = New-Object System.Windows.Forms.TextBox
-            $txtQuestion.Multiline = $true
             $txtQuestion.Dock = 'Fill'
-            $txtQuestion.Font = New-Object System.Drawing.Font('Segoe UI', 10.5)
-            $txtQuestion.BorderStyle = 'FixedSingle'
+            $txtQuestion.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+            $txtQuestion.BorderStyle = 'None'
             $txtQuestion.Text = 'Ask a follow-up question about this code...'
             $txtQuestion.ForeColor = $cGrayLocal
 
@@ -1011,7 +1016,8 @@ function Show-ResultPopup {
                 }
             }.GetNewClosure())
 
-            $boxPanel.Controls.Add($txtQuestion)
+            $tbWrap.Controls.Add($txtQuestion)
+            $boxPanel.Controls.Add($tbWrap)
             $chatPanel.Controls.Add($boxPanel)
             $chatPanel.Controls.Add($btnAsk)
 
