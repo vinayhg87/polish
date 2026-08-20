@@ -952,6 +952,10 @@ function Show-ResultPopup {
         # Interactive Q&A chat bar for Code Explainer and Fix SQL modes
         $chatPanel = $null
         if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') {
+            $cTealLocal = $script:Teal
+            $cInkLocal  = $script:Ink
+            $cGrayLocal = [System.Drawing.Color]::Gray
+
             $chatPanel = New-Object System.Windows.Forms.Panel
             $chatPanel.Dock = 'Bottom'
             $chatPanel.Height = [int](44 * $sc)
@@ -965,7 +969,7 @@ function Show-ResultPopup {
             $btnAsk.AutoSize = $false
             $btnAsk.FlatStyle = 'Flat'
             $btnAsk.FlatAppearance.BorderSize = 0
-            $btnAsk.BackColor = $script:Teal
+            $btnAsk.BackColor = $cTealLocal
             $btnAsk.ForeColor = [System.Drawing.Color]::White
             $btnAsk.Font = New-Object System.Drawing.Font('Segoe UI', 9.5, [System.Drawing.FontStyle]::Bold)
             $btnAsk.Cursor = [System.Windows.Forms.Cursors]::Hand
@@ -974,20 +978,20 @@ function Show-ResultPopup {
             $txtQuestion.Dock = 'Fill'
             $txtQuestion.Font = New-Object System.Drawing.Font('Segoe UI', 9.5)
             $txtQuestion.Text = 'Ask a follow-up question about this code...'
-            $txtQuestion.ForeColor = [System.Drawing.Color]::Gray
+            $txtQuestion.ForeColor = $cGrayLocal
 
             $txtQuestion.add_GotFocus({
                 param($s, $e)
                 if ($s.Text -eq 'Ask a follow-up question about this code...') {
                     $s.Text = ''
-                    $s.ForeColor = $script:Ink
+                    $s.ForeColor = $cInkLocal
                 }
             }.GetNewClosure())
             $txtQuestion.add_LostFocus({
                 param($s, $e)
                 if ([string]::IsNullOrWhiteSpace($s.Text)) {
                     $s.Text = 'Ask a follow-up question about this code...'
-                    $s.ForeColor = [System.Drawing.Color]::Gray
+                    $s.ForeColor = $cGrayLocal
                 }
             }.GetNewClosure())
 
@@ -1032,7 +1036,7 @@ function Show-ResultPopup {
                     if (-not $form.IsDisposed) {
                         $title.Text = $baseTitle
                         $txtQuestion.Text = 'Ask a follow-up question about this code...'
-                        $txtQuestion.ForeColor = [System.Drawing.Color]::Gray
+                        $txtQuestion.ForeColor = $cGrayLocal
                         $txtQuestion.Enabled = $true
                         $btnAsk.Enabled = $true
                         $btnCopy.Enabled = $true
@@ -1214,8 +1218,8 @@ function Show-ResultPopup {
         } catch { }
         & $generate      # stream the first result into the now-visible popup
     } catch {
-        Log "Show-ResultPopup error: $($_.Exception.Message)"
-        Show-Note 'Could not open the result window.' 'Warning'
+        Log "Show-ResultPopup error: $($_.Exception.ToString())"
+        Show-Note "Could not open result window: $($_.Exception.Message)" 'Warning'
     }
 }
 
