@@ -886,8 +886,8 @@ function Show-ResultPopup {
         # DPI-aware sizing: scale hard-coded pixel dimensions so the header band
         # grows with the (point-based) font and never clips on >100% displays.
         $sc = Get-UiScale $form
-        $form.ClientSize = Scale-Size $sc 560 430
-        $form.MinimumSize = Scale-Size $sc 440 320
+        $form.ClientSize = Scale-Size $sc 560 (if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 510 } else { 430 })
+        $form.MinimumSize = Scale-Size $sc 440 (if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') { 420 } else { 320 })
         Center-Form $form
 
         # Header (top band)
@@ -948,6 +948,109 @@ function Show-ResultPopup {
         $btnCopy.add_Click({ param($s, $e)
                 try { [System.Windows.Forms.Clipboard]::SetText($state.Result); $state.Copied = $true; Show-Note 'Copied to clipboard.' 'Info' } catch { }
             }.GetNewClosure())
+
+        # Interactive Q&A chat bar for Code Explainer and Fix SQL modes
+        $chatPanel = $null
+        if ($Mode -eq 'code_analyzer' -or $Mode -eq 'sql') {
+            $chatPanel = New-Object System.Windows.Forms.Panel
+            $chatPanel.Dock = 'Bottom'
+            $chatPanel.Height = [int](44 * $sc)
+            $chatPanel.Padding = New-Object System.Windows.Forms.Padding([int](14 * $sc), [int](6 * $sc), [int](14 * $sc), [int](6 * $sc))
+            $chatPanel.BackColor = [System.Drawing.Color]::FromArgb(245, 247, 248)
+
+            $btnAsk = New-Object System.Windows.Forms.Button
+            $btnAsk.Text = 'Ask'
+            $btnAsk.Dock = 'Right'
+            $btnAsk.Width = [int](72 * $sc)
+            $btnAsk.AutoSize = $false
+            $btnAsk.FlatStyle = 'Flat'
+            $btnAsk.FlatAppearance.BorderSize = 0
+            $btnAsk.BackColor = $script:Teal
+            $btnAsk.ForeColor = [System.Drawing.Color]::White
+            $btnAsk.Font = New-Object System.Drawing.Font('Segoe UI', 9.5, [System.Drawing.FontStyle]::Bold)
+            $btnAsk.Cursor = [System.Windows.Forms.Cursors]::Hand
+
+            $txtQuestion = New-Object System.Windows.Forms.TextBox
+            $txtQuestion.Dock = 'Fill'
+            $txtQuestion.Font = New-Object System.Drawing.Font('Segoe UI', 9.5)
+            $txtQuestion.Text = 'Ask a follow-up question about this code...'
+            $txtQuestion.ForeColor = [System.Drawing.Color]::Gray
+
+            $txtQuestion.add_GotFocus({
+                param($s, $e)
+                if ($s.Text -eq 'Ask a follow-up question about this code...') {
+                    $s.Text = ''
+                    $s.ForeColor = $script:Ink
+                }
+            }.GetNewClosure())
+            $txtQuestion.add_LostFocus({
+                param($s, $e)
+                if ([string]::IsNullOrWhiteSpace($s.Text)) {
+                    $s.Text = 'Ask a follow-up question about this code...'
+                    $s.ForeColor = [System.Drawing.Color]::Gray
+                }
+            }.GetNewClosure())
+
+            $chatPanel.Controls.Add($txtQuestion)
+            $chatPanel.Controls.Add($btnAsk)
+
+            $askQuestion = {
+                $q = [string]$txtQuestion.Text
+                if ([string]::IsNullOrWhiteSpace($q) -or $q -eq 'Ask a follow-up question about this code...' -or $state.Generating) { return }
+                $state.Generating = $true
+                $btnAsk.Enabled = $false
+                $txtQuestion.Enabled = $false
+                $btnCopy.Enabled = $false
+                $btnRegen.Enabled = $false
+                if ($btnReplace) { $btnReplace.Enabled = $false }
+                $title.Text = 'Answering...'
+                [System.Windows.Forms.Application]::DoEvents()
+
+                try {
+                    if (-not $tb.IsDisposed) {
+                        $tb.AppendText("`r`n`r`nQ: $q`r`n`r`nA: ")
+                        $tb.Select($tb.TextLength, 0)
+                        $tb.ScrollToCaret()
+                        Format-RichTextHeaders $tb
+                    }
+
+                    $sysMsg = 'You are an expert senior software engineer providing interactive Q&A assistance on the user''s code or SQL query. Provide a clear, direct, and technical answer to the follow-up question. Do NOT output markdown headings (no ###) or conversational preambles.'
+                    $chatPrompt = "The user has provided the following snippet inside <message></message> tags:`n<message>`n$Original`n</message>`n`nPrior Analysis:`n$($state.Result)`n`nFollow-up Question: $q"
+
+                    $ans = Invoke-Polish -Text $chatPrompt -System $sysMsg -Mode $Mode -Stream -Target $tb -CancelState $state
+                    if ($state.Cancelled) { return }
+                    $state.Result = $tb.Text
+                    if (-not $tb.IsDisposed) {
+                        Format-RichTextHeaders $tb
+                        $tb.Select($tb.TextLength, 0)
+                        $tb.ScrollToCaret()
+                    }
+                } catch {
+                    if (-not $tb.IsDisposed) { $tb.AppendText("`r`nCouldn't reach model: $($_.Exception.Message)") }
+                } finally {
+                    $state.Generating = $false
+                    if (-not $form.IsDisposed) {
+                        $title.Text = $baseTitle
+                        $txtQuestion.Text = 'Ask a follow-up question about this code...'
+                        $txtQuestion.ForeColor = [System.Drawing.Color]::Gray
+                        $txtQuestion.Enabled = $true
+                        $btnAsk.Enabled = $true
+                        $btnCopy.Enabled = $true
+                        $btnRegen.Enabled = $true
+                        if ($btnReplace) { $btnReplace.Enabled = $true }
+                    }
+                }
+            }.GetNewClosure()
+
+            $btnAsk.add_Click({ param($s, $e) & $askQuestion }.GetNewClosure())
+            $txtQuestion.add_KeyDown({
+                param($s, $e)
+                if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) {
+                    $e.SuppressKeyPress = $true
+                    & $askQuestion
+                }
+            }.GetNewClosure())
+        }
 
         # Generator: streams a fresh result into the popup live. Used on open,
         # tone-switch, and Regenerate. Results are cached per tone for this popup
@@ -1097,6 +1200,7 @@ function Show-ResultPopup {
         # added docks outermost, so header goes on top and the tone strip below it.
         $form.Controls.Add($bodyPanel)
         $form.Controls.Add($footer)
+        if ($chatPanel) { $form.Controls.Add($chatPanel) }
         if ($toneStrip) { $form.Controls.Add($toneStrip) }
         $form.Controls.Add($header)
 
