@@ -159,6 +159,19 @@ and pastes the result back over your selection. Everything is local.
 
 ## Changelog
 
+### v1.8
+- **Instant JSON Formatter & Color Beautifier (`Ctrl + Alt + J`)**:
+  - Pure PowerShell local execution (no AI call, zero latency, works 100% offline).
+  - Formats minified or raw JSON with clean 4-space indentation and WinForms RichTextBox syntax color highlighting (Keys, Strings, Numbers, Booleans/null).
+  - Automatically validates JSON structure and displays clear line-level parse errors if JSON is invalid.
+- **AI Code Analyser & Reviewer (`Ctrl + Alt + A`)**:
+  - Cloud-powered (`gemma4:cloud`) code architect reviewing any language (Python, TypeScript, Java, C#, Go, C++, Rust, SQL, PowerShell).
+  - Formatted into 4 clean sections: **`Language:`**, **`Functional Summary:`**, **`Technical Summary:`**, and **`Improvements:`** (1–10 quality rating score; suggestions provided conditionally only if score < 5).
+  - Integrated with the **Outbound Security Engine** to mask hardcoded credentials, API keys, passwords, DB URIs, and IP addresses before cloud analysis.
+- **Enhanced Fix SQL (`Ctrl + Alt + Q`)**:
+  - Aligned Fix SQL with the Code Analyser template structure (**`SQL Analysis:`**, **`Dialect:`**, **`Functional Summary:`**, **`Technical Summary:`**, **`Improvements:`**, **`Corrected SQL:`**).
+  - Skips redundant query rewrites when the SQL query is already valid and optimized.
+
 ### v1.7
 - **Security Redaction & Data Masking Engine (`polish.security.config.json`)**:
   - Automatically redacts sensitive data (SSNs, Emails, DOBs, Passwords, DB URIs, API Keys, Credit Cards, IP Addresses, Corporate Domains, and Custom Employee ID regex rules) into token placeholders before sending to cloud models.
