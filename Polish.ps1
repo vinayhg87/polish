@@ -88,7 +88,7 @@ $Tones = @{
     'grammar'       = 'You are a careful proofreader. Correct only spelling, grammar, punctuation, and capitalization in the user''s message. Do not change wording, tone, style, or meaning beyond what is required for correctness. Do not add notes or quotation marks. Return only the corrected message.'
     'sql'           = 'You are an expert Oracle SQL developer. The text is an existing Oracle SQL query that has a syntax error, logic error, or performance issue. First, explain all issues found in clear bullet points (pointers). Then, provide the corrected Oracle SQL query. Preserve the original intent, table names, column names, aliases, joins, and literal values - do NOT rewrite the query into something completely different or change what the query accomplishes.'
     'summarize'     = 'You are an expert summarizer. Your goal is to condense the provided text into a few concise, accurate bullet points. Focus on main decisions, key changes (including dates and numbers), action items, and deadlines. Ensure all facts remain accurate and that no external information is added.'
-    'code_analyzer' = 'You are a principal software architect and senior security auditor. The user will provide a code snippet. First, explain what the code does in clear bullet points. Then, identify any security vulnerabilities, logic bugs, edge cases, and performance bottlenecks. Finally, provide the corrected and improved code. Preserve the original programming language, variable names, and intent - do NOT rewrite the code into a completely different solution or change what it accomplishes.'
+    'code_analyzer' = 'You are an expert programming educator who excels at breaking down code into simple, intuitive concepts. The user will provide a code snippet. Explain what the code does step-by-step in plain, crystal-clear language as if explaining to a 5-year-old (ELI5 style). Break down the purpose of variables, loops, functions, inputs, and outputs using simple analogies where helpful. Do NOT include bug reports, security audits, or rewritten code. Do NOT output conversational preambles. Focus entirely on providing a thorough, highly readable, and beginner-friendly Code Explanation.'
 }
 
 # Global hotkey id -> tone key
@@ -151,14 +151,6 @@ function Get-ReplaceableText {
             $sql = $sql -replace '^\s*```[a-zA-Z]*\s*', ''
             $sql = $sql -replace '\s*```\s*$', ''
             if ($sql) { return $sql.Trim() }
-        }
-    }
-    if ($Mode -eq 'code_analyzer') {
-        if ($Text -match '(?si)Corrected\s+Code\s*:\s*(.*)$') {
-            $code = $Matches[1].Trim()
-            $code = $code -replace '^\s*```[a-zA-Z]*\s*', ''
-            $code = $code -replace '\s*```\s*$', ''
-            if ($code) { return $code.Trim() }
         }
     }
     return $Text
@@ -310,8 +302,8 @@ function Invoke-Polish {
             $activeModel = $SqlModel
         }
         'code_analyzer' {
-            $guard = ' The code to analyze is inside <message></message> tags. You must structure your output into three clear sections:`n`nCode Explanation:`n- [What the code does, explained in clear plain English bullet points]`n`nIssues & Improvements:`n- [Security vulnerabilities, logic bugs, edge cases, performance bottlenecks, each as a bullet point]`n`nCorrected Code:`n[The corrected, improved, production-ready code]`n`nDo NOT wrap the response or code in markdown code block fences (no ``` or ```python or ```java). Do not add any conversational preamble. Provide clear pointers and the exact corrected code.'
-            $temp = 0.1; $predict = 2048; $ctx = 8192
+            $guard = ' The code to explain is inside <message></message> tags. You must structure your output as a detailed, step-by-step Code Explanation written in plain, intuitive language as if explaining to a 5-year-old (ELI5 style). Use clear bullet points and simple analogies. Do NOT include bug reports, security audits, or corrected code rewrites. Do NOT add conversational preambles. Provide only the clear, detailed Code Explanation.'
+            $temp = 0.25; $predict = 1500; $ctx = 8192
             $activeModel = $CodeAnalyzerModel
         }
         'summary' {
