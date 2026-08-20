@@ -968,25 +968,30 @@ function Show-ResultPopup {
 
             $chatPanel = New-Object System.Windows.Forms.Panel
             $chatPanel.Dock = 'Bottom'
-            $chatPanel.Height = [int](56 * $sc)
+            $chatPanel.Height = [int](54 * $sc)
             $chatPanel.Padding = New-Object System.Windows.Forms.Padding([int](14 * $sc), [int](10 * $sc), [int](14 * $sc), [int](10 * $sc))
             $chatPanel.BackColor = [System.Drawing.Color]::FromArgb(242, 244, 246)
 
             $btnAsk = New-Object System.Windows.Forms.Button
             $btnAsk.Text = 'Ask'
             $btnAsk.Dock = 'Right'
-            $btnAsk.Width = [int](80 * $sc)
+            $btnAsk.Width = [int](76 * $sc)
             $btnAsk.AutoSize = $false
             $btnAsk.FlatStyle = 'Flat'
             $btnAsk.FlatAppearance.BorderSize = 0
             $btnAsk.BackColor = $cTealLocal
             $btnAsk.ForeColor = [System.Drawing.Color]::White
-            $btnAsk.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
+            $btnAsk.Font = New-Object System.Drawing.Font('Segoe UI', 9.5, [System.Drawing.FontStyle]::Bold)
             $btnAsk.Cursor = [System.Windows.Forms.Cursors]::Hand
 
+            $boxPanel = New-Object System.Windows.Forms.Panel
+            $boxPanel.Dock = 'Fill'
+            $boxPanel.Padding = New-Object System.Windows.Forms.Padding(0, 0, [int](8 * $sc), 0)
+
             $txtQuestion = New-Object System.Windows.Forms.TextBox
+            $txtQuestion.Multiline = $true
             $txtQuestion.Dock = 'Fill'
-            $txtQuestion.Font = New-Object System.Drawing.Font('Segoe UI', 11)
+            $txtQuestion.Font = New-Object System.Drawing.Font('Segoe UI', 10.5)
             $txtQuestion.BorderStyle = 'FixedSingle'
             $txtQuestion.Text = 'Ask a follow-up question about this code...'
             $txtQuestion.ForeColor = $cGrayLocal
@@ -1006,7 +1011,8 @@ function Show-ResultPopup {
                 }
             }.GetNewClosure())
 
-            $chatPanel.Controls.Add($txtQuestion)
+            $boxPanel.Controls.Add($txtQuestion)
+            $chatPanel.Controls.Add($boxPanel)
             $chatPanel.Controls.Add($btnAsk)
 
             $askQuestion = {
