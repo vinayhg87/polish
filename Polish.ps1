@@ -786,6 +786,65 @@ function Format-RichTextHeaders {
         $RichTextBox.Select(0, 0)
     } catch { }
 }
+
+function Format-JsonHighlighting {
+    param($RichTextBox)
+    if (-not $RichTextBox -or $RichTextBox.IsDisposed -or -not $RichTextBox.Text) { return }
+    try {
+        $text = $RichTextBox.Text
+        $cKey     = [System.Drawing.Color]::FromArgb(41, 128, 185)   # Steel Blue / Cyan for Keys ("id", "name", "skills")
+        $cString  = [System.Drawing.Color]::FromArgb(39, 174, 96)    # Emerald Green for String Values ("Sara", "Python")
+        $cNumber  = [System.Drawing.Color]::FromArgb(211, 84, 0)     # Dark Orange for Numbers (1, 101)
+        $cBool    = [System.Drawing.Color]::FromArgb(142, 68, 173)   # Purple for Booleans (true, false, null)
+
+        # 1. Match keys: "key":
+        $matchesKey = [regex]::Matches($text, '"([^"\\]*(?:\\.[^"\\]*)*)"\s*:')
+        foreach ($m in $matchesKey) {
+            $g = $m.Groups[1]
+            if ($g.Success) {
+                $RichTextBox.Select($g.Index - 1, $g.Length + 2)
+                $RichTextBox.SelectionColor = $cKey
+            }
+        }
+
+        # 2. Match string values
+        $matchesStr = [regex]::Matches($text, '(?::\s*|\[\s*|,\s*)("([^"\\]*(?:\\.[^"\\]*)*)")')
+        foreach ($m in $matchesStr) {
+            $g = $m.Groups[1]
+            if ($g.Success) {
+                $afterIndex = $m.Index + $m.Length
+                $rest = if ($afterIndex -lt $text.Length) { $text.Substring($afterIndex, [Math]::Min(10, $text.Length - $afterIndex)) } else { '' }
+                if ($rest -notmatch '^\s*:') {
+                    $RichTextBox.Select($g.Index, $g.Length)
+                    $RichTextBox.SelectionColor = $cString
+                }
+            }
+        }
+
+        # 3. Match numbers
+        $matchesNum = [regex]::Matches($text, '(?::\s*|\[\s*|,\s*)(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)')
+        foreach ($m in $matchesNum) {
+            $g = $m.Groups[1]
+            if ($g.Success) {
+                $RichTextBox.Select($g.Index, $g.Length)
+                $RichTextBox.SelectionColor = $cNumber
+            }
+        }
+
+        # 4. Match booleans & null
+        $matchesBool = [regex]::Matches($text, '(?::\s*|\[\s*|,\s*)\b(true|false|null)\b')
+        foreach ($m in $matchesBool) {
+            $g = $m.Groups[1]
+            if ($g.Success) {
+                $RichTextBox.Select($g.Index, $g.Length)
+                $RichTextBox.SelectionColor = $cBool
+            }
+        }
+
+        $RichTextBox.Select(0, 0)
+    } catch { }
+}
+
 function Hide-Working { param($f) if ($f) { try { $f.Close(); $f.Dispose() } catch { } } }
 
 # --- Unified result popup: Summary (view-only) or Preview (Replace/Copy/Regenerate) ---
@@ -892,7 +951,12 @@ function Show-ResultPopup {
             if (-not $Force -and $state.Cache.ContainsKey($key)) {
                 $cached = [string]$state.Cache[$key]
                 $state.Result = $cached
-                if (-not $tb.IsDisposed) { $tb.Text = $cached; Format-RichTextHeaders $tb; $tb.Select(0, 0) }
+                if (-not $tb.IsDisposed) {
+                    $tb.Text = $cached
+                    Format-RichTextHeaders $tb
+                    if ($Mode -eq 'json') { Format-JsonHighlighting $tb }
+                    $tb.Select(0, 0)
+                }
                 if (-not $form.IsDisposed) { $title.Text = $baseTitle }
                 return
             }
@@ -914,7 +978,12 @@ function Show-ResultPopup {
                 if ($state.Cancelled) { return }
                 $state.Result = $full
                 $state.Cache[$key] = $full     # remember this tone's result for instant re-view
-                if (-not $tb.IsDisposed) { $tb.Text = $full; Format-RichTextHeaders $tb; $tb.Select(0, 0) }
+                if (-not $tb.IsDisposed) {
+                    $tb.Text = $full
+                    Format-RichTextHeaders $tb
+                    if ($Mode -eq 'json') { Format-JsonHighlighting $tb }
+                    $tb.Select(0, 0)
+                }
                 if (-not $state.Historied -and $Mode -ne 'json') { Add-History -Tone $key -Original $Original -Result $full; $state.Historied = $true }
             } catch {
                 if (-not $state.Cancelled -and -not $tb.IsDisposed) { $tb.Text = "Couldn't reach the model. Is Ollama running?`r`n`r`n$($_.Exception.Message)" }
